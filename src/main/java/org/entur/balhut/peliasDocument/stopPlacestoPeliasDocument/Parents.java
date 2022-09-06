@@ -85,7 +85,7 @@ public class Parents {
     }
 
     private static Parent createParentForLocality(AdminUnit locality, AdminUnitsCache adminUnitsCache) {
-        var parent = Parent.initParentWithField(
+        var parent = new Parent(
                 Parent.FieldName.LOCALITY,
                 new Parent.Field(locality.id(), locality.name())
         );
@@ -116,7 +116,7 @@ public class Parents {
     }
 
     private static Parent createParentForCounty(AdminUnit county, AdminUnitsCache adminUnitsCache) {
-        var parent = Parent.initParentWithField(
+        var parent = new Parent(
                 Parent.FieldName.COUNTY,
                 new Parent.Field(county.id(), county.name())
         );
@@ -132,7 +132,7 @@ public class Parents {
     }
 
     private static Parent createParentForCountry(AdminUnit country) {
-        return Parent.initParentWithField(
+        return new Parent(
                 Parent.FieldName.COUNTRY,
                 new Parent.Field(country.id(), country.name(), country.getISO3CountryName())
         );
@@ -148,7 +148,7 @@ public class Parents {
             case LOCALITY -> adminUnitsCache.getLocalityForPoint(point);
             case COUNTY -> adminUnitsCache.getCountyForPoint(point);
             case COUNTRY -> adminUnitsCache.getCountryForPoint(point);
-            default -> null; // TODO: handle / remove
+            default -> null;
         };
     }
 }

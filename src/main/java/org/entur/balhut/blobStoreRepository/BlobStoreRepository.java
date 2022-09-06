@@ -31,7 +31,7 @@ import java.util.Iterator;
  */
 public interface BlobStoreRepository {
 
-    default Iterator<Blob> listBlob(String prefix) {
+    default InputStream getLatestBlob(String prefix) {
         throw new RuntimeException("Not implemented");
     }
 

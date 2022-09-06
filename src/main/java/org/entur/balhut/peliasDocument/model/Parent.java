@@ -27,10 +27,8 @@ public class Parent {
 
     private final Map<FieldName, Field> fields = new HashMap<>();
 
-    public static Parent initParentWithField(FieldName fieldName, Field field) {
-        Parent parent = new Parent();
-        parent.addOrReplaceParentField(fieldName, field);
-        return parent;
+    public Parent (FieldName fieldName, Field field) {
+        addOrReplaceParentField(fieldName, field);
     }
 
     public void addOrReplaceParentField(FieldName fieldName, Field field) {
@@ -70,8 +68,8 @@ public class Parent {
     }
 
     public enum FieldName {
-        COUNTRY("country"), // TODO: Remove
-        COUNTY("county"), // TODO: Remove
+        COUNTRY("country"),
+        COUNTY("county"),
         BOROUGH("borough"),
         POSTAL_CODE("postalcode"),
         LOCALITY("locality");

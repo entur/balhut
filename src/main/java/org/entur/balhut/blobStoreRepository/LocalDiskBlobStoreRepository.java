@@ -18,7 +18,9 @@
 
 package org.entur.balhut.blobStoreRepository;
 
+import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
+import org.rutebanken.helper.gcp.BlobStoreHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,10 +33,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -108,6 +110,32 @@ public class LocalDiskBlobStoreRepository implements BlobStoreRepository {
     @Override
     public void setStorage(Storage storage) {
         // TODO: Not good
+    }
+
+    @Override
+    public InputStream getLatestBlob(String prefix) {
+        if (Paths.get(baseFolder, prefix).toFile().isDirectory()) {
+            try (var paths = Files.walk(Paths.get(baseFolder, prefix))) {
+                return paths.filter(LocalDiskBlobStoreRepository::isValidFile).findFirst().map(path -> {
+                    try {
+                        return Files.newInputStream(path);
+                    } catch (IOException e) {
+                        return null;
+                    }
+                }).orElseThrow();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return null;
+    }
+
+    private static boolean isValidFile(Path path) {
+        try {
+            return Files.isRegularFile(path) && !Files.isHidden(path);
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     @Override

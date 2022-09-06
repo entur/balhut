@@ -18,7 +18,7 @@
         <spring-cloud-gcp.version>3.2.1</spring-cloud-gcp.version>
         <spring-cloud.version>2021.0.2</spring-cloud.version>
         <camel.version>3.16.0</camel.version>
-        <geotools.version>20.3</geotools.version>
+        <geotools.version>26.4</geotools.version>
         <entur.helpers.version>1.0.70</entur.helpers.version>
         <wololo.version>0.17.0</wololo.version>
     </properties>
@@ -115,17 +115,22 @@
             <artifactId>beanio</artifactId>
             <version>2.1.0</version>
         </dependency>
+        <!-- Geo Tools -->
         <dependency>
             <groupId>org.geotools</groupId>
-            <artifactId>gt-opengis</artifactId>
-            <version>20.5</version>
+            <artifactId>gt-referencing</artifactId>
+            <version>${geotools.version}</version>
         </dependency>
         <dependency>
             <groupId>org.geotools</groupId>
-            <artifactId>gt-api</artifactId>
-            <version>20.5</version>
+            <artifactId>gt-geojson</artifactId>
+            <version>${geotools.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-epsg-hsql</artifactId>
+            <version>${geotools.version}</version>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>

@@ -18,16 +18,10 @@
 
 package org.entur.balhut.services;
 
-import com.google.cloud.storage.Blob;
-import org.entur.balhut.blobStoreRepository.BlobStoreFiles;
+import org.apache.camel.Header;
 import org.entur.balhut.blobStoreRepository.BlobStoreRepository;
 
-import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.Comparator;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.StreamSupport;
 
 public abstract class BlobStoreService {
 
@@ -36,10 +30,6 @@ public abstract class BlobStoreService {
     protected BlobStoreService(String bucketName, BlobStoreRepository repository) {
         this.repository = repository;
         this.repository.setBucketName(bucketName);
-    }
-
-    public boolean existBlob(String name) {
-        return repository.existBlob(name);
     }
 
     public InputStream getBlob(String name) {
@@ -51,10 +41,6 @@ public abstract class BlobStoreService {
     }
 
     public InputStream findLatestBlob(String prefix) {
-        Iterable<Blob> blobIterable = () -> repository.listBlob(prefix);
-        return StreamSupport.stream(blobIterable.spliterator(), false)
-                .min(Comparator.comparing(Blob::getUpdateTime))
-                .map(blob -> repository.getBlob(blob.getName()))
-                .orElseThrow();
+        return repository.getLatestBlob(prefix);
     }
 }

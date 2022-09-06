@@ -16,33 +16,21 @@
 
 package org.entur.balhut.peliasDocument.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.*;
 
 public class PeliasDocument {
 
-    private static final Logger logger = LoggerFactory.getLogger(PeliasDocument.class);
     public static final String DEFAULT_INDEX = "pelias";
     public static final String DEFAULT_SOURCE = "kartverket";
 
     private final String layer;
     private final String sourceId;
-
+    private String defaultName;
     private GeoPoint centerPoint;
     private AddressParts addressParts;
     private Parent parent;
     private long popularity = 1L;
-
-    private final Map<String, String> nameMap = new HashMap<>();
-    private final Map<String, String> descriptionMap = new HashMap<>();
-    private final Map<String, String> aliasMap = new HashMap<>();
-
-    private List<String> category = new ArrayList<>();
-    private List<String> tariffZones = new ArrayList<>();
-    private List<String> tariffZoneAuthorities = new ArrayList<>();
+    private String category;
 
     public PeliasDocument(String layer, String sourceId) {
         this.layer = Objects.requireNonNull(layer);
@@ -53,48 +41,12 @@ public class PeliasDocument {
         return layer;
     }
 
-    public Set<Map.Entry<String, String>> namesEntrySet() {
-        return nameMap.entrySet();
-    }
-
     public String defaultName() {
-        return nameMap.get("default");
+        return defaultName;
     }
 
-    public void addName(String language, String name) {
-        nameMap.put(IsoLanguageCodeMap.getLanguage(language), name);
-    }
-
-    public void addDefaultName(String name) {
-        nameMap.put("default", name);
-    }
-
-    public void addDisplayName(String name) {
-        nameMap.put("display", name);
-    }
-
-    public void addDescription(String language, String description) {
-        descriptionMap.put(language, description);
-    }
-
-    public Map<String, String> descriptionMap() {
-        return descriptionMap;
-    }
-
-    public void addAlias(String language, String alias) {
-        aliasMap.put(IsoLanguageCodeMap.getLanguage(language), alias);
-    }
-
-    public void addDefaultAlias(String alias) {
-        aliasMap.put("default", alias);
-    }
-
-    public Map<String, String> aliasMap() {
-        return aliasMap;
-    }
-
-    public String defaultAlias() {
-        return aliasMap.get("default");
+    public void addDefaultName(String defaultName) {
+        this.defaultName = defaultName;
     }
 
     public AddressParts addressParts() {
@@ -125,28 +77,12 @@ public class PeliasDocument {
         return sourceId;
     }
 
-    public List<String> category() {
+    public String category() {
         return category;
     }
 
-    public void setCategory(List<String> category) {
+    public void setCategory(String category) {
         this.category = category;
-    }
-
-    public List<String> tariffZones() {
-        return tariffZones;
-    }
-
-    public void setTariffZones(List<String> tariffZones) {
-        this.tariffZones = tariffZones;
-    }
-
-    public List<String> tariffZoneAuthorities() {
-        return tariffZoneAuthorities;
-    }
-
-    public void setTariffZoneAuthorities(List<String> tariffZoneAuthorities) {
-        this.tariffZoneAuthorities = tariffZoneAuthorities;
     }
 
     public GeoPoint centerPoint() {
@@ -155,15 +91,5 @@ public class PeliasDocument {
 
     public void setCenterPoint(GeoPoint centerPoint) {
         this.centerPoint = centerPoint;
-    }
-
-    @JsonIgnore
-    public boolean isValid() {
-
-        if (centerPoint == null) {
-            logger.debug("Removing invalid document where geometry is missing:" + this);
-            return false;
-        }
-        return true;
     }
 }

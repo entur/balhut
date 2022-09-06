@@ -18,7 +18,6 @@
 
 package org.entur.balhut.blobStoreRepository;
 
-import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.Acl;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
@@ -29,6 +28,7 @@ import org.springframework.stereotype.Repository;
 
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.StreamSupport;
 
 /**
  * Blob store no.entur.antu.repository targeting Google Cloud Storage.
@@ -71,9 +71,12 @@ public class GcsBlobStoreRepository implements BlobStoreRepository {
     }
 
     @Override
-    public Iterator<Blob> listBlob(String prefix) {
-        Page<Blob> blobs = storage.list(bucketName, Storage.BlobListOption.prefix(prefix));
-        return BlobStoreHelper.listAllBlobsRecursively(storage, bucketName, prefix);
+    public InputStream getLatestBlob(String prefix) {
+        Iterable<Blob> blobIterable = () -> BlobStoreHelper.listAllBlobsRecursively(storage, bucketName, prefix);
+        return StreamSupport.stream(blobIterable.spliterator(), false)
+                .min(Comparator.comparing(Blob::getUpdateTime))
+                .map(blob -> getBlob(blob.getName()))
+                .orElseThrow();
     }
 
     @Override

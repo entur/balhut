@@ -2,12 +2,18 @@ package org.entur.balhut.camel;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
-import org.entur.balhut.addresses.AddressStreamToElasticSearchCommands;
+import org.entur.balhut.addresses.AddressToPeliasMapper;
+import org.entur.balhut.addresses.AddressToStreetMapper;
+import org.entur.balhut.addresses.kartverket.KartverketAddress;
+import org.entur.balhut.addresses.kartverket.KartverketAddressReader;
 import org.entur.balhut.adminUnitsCache.AdminUnitsCache;
 import org.entur.balhut.csv.PeliasDocumentToCSV;
-import org.entur.balhut.peliasDocument.stopPlacestoPeliasDocument.StopPlacesToPeliasDocument;
+import org.entur.balhut.peliasDocument.model.AddressParts;
+import org.entur.balhut.peliasDocument.model.Parent;
+import org.entur.balhut.peliasDocument.model.PeliasDocument;
 import org.entur.balhut.services.BalhutBlobStoreService;
 import org.entur.balhut.services.KakkaBlobStoreService;
+import org.entur.netex.NetexParser;
 import org.entur.netex.index.api.NetexEntitiesIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +24,11 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Component
@@ -37,10 +48,13 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
     @Value("${balhut.camel.redelivery.backoff.multiplier:3}")
     private int backOffMultiplier;
 
-    @Value("${balhut.update.cron.schedule:0+0/3+*+1/1+*+?+*}")
+    @Value("${balhut.update.cron.schedule:0+0/1+*+1/1+*+?+*}")
     private String cronSchedule;
 
-    @Value("${blobstore.gcs.kakka.tiamat.geocoder.file:kartverket/addresses}")
+    @Value("${blobstore.gcs.kakka.tiamat.geocoder.file:tiamat/geocoder/tiamat_export_geocoder_latest.zip}")
+    private String tiamatGeocoderFile;
+
+    @Value("${blobstore.gcs.kakka.kartverket.addresses.folder:kartverket/addresses}")
     private String kartverketAddressesFolder;
 
     @Value("${balhut.workdir:/tmp/balhut/geocoder}")
@@ -49,20 +63,30 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
     @Value("${admin.units.cache.max.size:30000}")
     private Integer cacheMaxSize;
 
-    private final AddressStreamToElasticSearchCommands addressStreamToElasticSearchCommands;
-
     private final KakkaBlobStoreService kakkaBlobStoreService;
     private final BalhutBlobStoreService balhutBlobStoreService;
-    private final StopPlacesToPeliasDocument stopPlacesToPeliasDocument;
+    private final AddressToPeliasMapper addressMapper;
+    private final AddressToStreetMapper addressToStreetMapper;
 
     public StopPlacesDataRouteBuilder(
-            AddressStreamToElasticSearchCommands addressStreamToElasticSearchCommands, KakkaBlobStoreService kakkaBlobStoreService,
+            KakkaBlobStoreService kakkaBlobStoreService,
             BalhutBlobStoreService balhutBlobStoreService,
-            StopPlacesToPeliasDocument stopPlacesToPeliasDocument) {
-        this.addressStreamToElasticSearchCommands = addressStreamToElasticSearchCommands;
+            AddressToPeliasMapper addressMapper,
+            AddressToStreetMapper addressToStreetMapper) {
         this.kakkaBlobStoreService = kakkaBlobStoreService;
         this.balhutBlobStoreService = balhutBlobStoreService;
-        this.stopPlacesToPeliasDocument = stopPlacesToPeliasDocument;
+        this.addressMapper = addressMapper;
+        this.addressToStreetMapper = addressToStreetMapper;
+    }
+
+    private static final AtomicBoolean readyToProcess = new AtomicBoolean(true);
+
+    public static boolean readyToProcess() {
+        boolean readyToProcess = StopPlacesDataRouteBuilder.readyToProcess.get();
+        if (readyToProcess) {
+            StopPlacesDataRouteBuilder.readyToProcess.set(false);
+        }
+        return readyToProcess;
     }
 
     @Override
@@ -81,42 +105,50 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
                 .to("direct:makeCSV");
 
         from("direct:makeCSV")
+                .filter(method(StopPlacesDataRouteBuilder.class, "readyToProcess"))
+                .to("direct:cacheAdminUnits")
                 .process(this::loadAddressesFile)
                 .process(this::unzipAddressesFileToWorkingDirectory)
-                .process(this::parseNetexFile)
-                .process(this::buildAdminUnitCache) // TODO: Trenger vi det ????, Vi enricher ikke vel addresses data ??
-                .process(this::netexEntitiesIndexToPeliasDocuments)
+                .process(this::readAddressesCSVFile)
+                .process(this::createPeliasDocumentsForAllIndividualAddresses)
+                .process(this::addPeliasDocumentForStreets)
                 .bean(PeliasDocumentToCSV::new)
                 .process(this::setOutputFilenameHeader)
                 .process(this::zipCSVFile)
                 .process(this::uploadCSVFile)
-                .process(this::updateCurrentFile);
+                .process(this::updateCurrentFile)
+                .process(exchange -> readyToProcess.set(true));
+
+        from("direct:cacheAdminUnits")
+                .process(this::loadStopPlacesFile)
+                .process(this::unzipStopPlacesToWorkingDirectory)
+                .process(this::parseStopPlacesNetexFile)
+                .process(this::buildAdminUnitCache);
     }
 
-    private void loadAddressesFile(Exchange exchange) {
-        logger.debug("Loading addresses file");
+    private void loadStopPlacesFile(Exchange exchange) {
+        logger.debug("Loading stop places file");
         exchange.getIn().setBody(
-                kakkaBlobStoreService.findLatestBlob(kartverketAddressesFolder),
+                kakkaBlobStoreService.getBlob(tiamatGeocoderFile),
                 InputStream.class
         );
     }
 
-    private void unzipAddressesFileToWorkingDirectory(Exchange exchange) {
-        logger.debug("Unzipping addresses file");
+    private void unzipStopPlacesToWorkingDirectory(Exchange exchange) {
+        logger.debug("Unzipping stop places file");
         ZipUtilities.unzipFile(
                 exchange.getIn().getBody(InputStream.class),
-                balhutWorkDir
+                balhutWorkDir + "/adminUnits"
         );
     }
 
-    private void parseNetexFile(Exchange exchange) {
-        logger.debug("Parsing the Netex file.");
-        try (Stream<Path> paths = Files.walk(Paths.get(balhutWorkDir))) {
+    private void parseStopPlacesNetexFile(Exchange exchange) {
+        logger.debug("Parsing the stop place Netex file.");
+        var parser = new NetexParser();
+        try (Stream<Path> paths = Files.walk(Paths.get(balhutWorkDir + "/adminUnits"))) {
             paths.filter(Files::isRegularFile).findFirst().ifPresent(path -> {
                 try (InputStream inputStream = new FileInputStream(path.toFile())) {
-
-                    addressStreamToElasticSearchCommands.transform(inputStream);
-
+                    exchange.getIn().setBody(parser.parse(inputStream));
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -133,11 +165,80 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
         exchange.setProperty(ADMIN_UNITS_CACHE_PROPERTY, adminUnitsCache);
     }
 
-    private void netexEntitiesIndexToPeliasDocuments(Exchange exchange) {
-        logger.debug("Converting netexEntitiesIndex to PeliasDocuments");
-        var netexEntitiesIndex = exchange.getIn().getBody(NetexEntitiesIndex.class);
-        AdminUnitsCache adminUnitCache = exchange.getProperty(ADMIN_UNITS_CACHE_PROPERTY, AdminUnitsCache.class);
-        exchange.getIn().setBody(stopPlacesToPeliasDocument.toPeliasDocuments(netexEntitiesIndex, adminUnitCache));
+    private void loadAddressesFile(Exchange exchange) {
+        logger.debug("Loading addresses file");
+        exchange.getIn().setBody(
+                kakkaBlobStoreService.findLatestBlob(kartverketAddressesFolder),
+                InputStream.class
+        );
+    }
+
+    private void unzipAddressesFileToWorkingDirectory(Exchange exchange) {
+        logger.debug("Unzipping addresses file");
+        ZipUtilities.unzipFile(
+                exchange.getIn().getBody(InputStream.class),
+                balhutWorkDir + "/addresses"
+        );
+    }
+
+    private void readAddressesCSVFile(Exchange exchange) {
+        logger.debug("Read addresses CSV file.");
+        try (Stream<Path> paths = Files.walk(Paths.get(balhutWorkDir + "/addresses"))) {
+            paths.filter(Files::isRegularFile).findFirst().ifPresent(path -> {
+                try (InputStream inputStream = new FileInputStream(path.toFile())) {
+                    exchange.getIn().setBody(new KartverketAddressReader().read(inputStream));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void createPeliasDocumentsForAllIndividualAddresses(Exchange exchange) {
+        logger.debug("Create peliasDocuments for addresses");
+
+        Collection<KartverketAddress> addresses = exchange.getIn().getBody(Collection.class);
+        AdminUnitsCache adminUnitsCache = exchange.getProperty(ADMIN_UNITS_CACHE_PROPERTY, AdminUnitsCache.class);
+
+        long startTime = System.nanoTime();
+
+        // Create documents for all individual addresses
+        List<PeliasDocument> peliasDocuments = addresses.parallelStream()
+                .map(peliasDocument -> addressMapper.toPeliasDocument(peliasDocument, adminUnitsCache))
+                .collect(Collectors.toList());
+
+        long endTime = System.nanoTime();
+        long duration = (endTime - startTime) / 1000000;
+
+        logger.debug("Create documents for all individual addresses duration(ms): " + duration);
+
+        exchange.getIn().setBody(peliasDocuments);
+    }
+
+    private void addPeliasDocumentForStreets(Exchange exchange) {
+        logger.debug("Add peliasDocuments for streets.");
+
+        List<PeliasDocument> peliasDocuments = exchange.getIn().getBody(List.class);
+
+        long startTime = System.nanoTime();
+
+        Comparator<PeliasDocument> peliasDocumentComparator = Comparator
+                .comparing(PeliasDocument::addressParts, Comparator.comparing(AddressParts::getStreet))
+                .thenComparing(PeliasDocument::parent, Comparator.comparing((Parent parent) -> parent.getParentFields().get(Parent.FieldName.LOCALITY).id()));
+
+        List<PeliasDocument> sortedPeliasDocuments = peliasDocuments.stream().sorted(peliasDocumentComparator).toList();
+
+        // Create separate document per unique street
+        peliasDocuments.addAll(addressToStreetMapper.createStreetPeliasDocumentsFromAddresses(peliasDocuments));
+
+        long endTime = System.nanoTime();
+        long duration = (endTime - startTime) / 1000000;
+
+        logger.debug("Add peliasDocuments for streets duration(ms): " + duration);
+
+        exchange.getIn().setBody(peliasDocuments);
     }
 
     private void setOutputFilenameHeader(Exchange exchange) {

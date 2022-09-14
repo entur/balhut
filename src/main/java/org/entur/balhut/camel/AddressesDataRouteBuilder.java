@@ -8,8 +8,6 @@ import org.entur.balhut.addresses.kartverket.KartverketAddress;
 import org.entur.balhut.addresses.kartverket.KartverketAddressReader;
 import org.entur.balhut.adminUnitsCache.AdminUnitsCache;
 import org.entur.balhut.csv.PeliasDocumentToCSV;
-import org.entur.balhut.peliasDocument.model.AddressParts;
-import org.entur.balhut.peliasDocument.model.Parent;
 import org.entur.balhut.peliasDocument.model.PeliasDocument;
 import org.entur.balhut.services.BalhutBlobStoreService;
 import org.entur.balhut.services.KakkaBlobStoreService;
@@ -25,16 +23,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Component
-public class StopPlacesDataRouteBuilder extends RouteBuilder {
+public class AddressesDataRouteBuilder extends RouteBuilder {
 
-    private static final Logger logger = LoggerFactory.getLogger(StopPlacesDataRouteBuilder.class);
+    private static final Logger logger = LoggerFactory.getLogger(AddressesDataRouteBuilder.class);
 
     private static final String OUTPUT_FILENAME_HEADER = "balhutOutputFilename";
     private static final String ADMIN_UNITS_CACHE_PROPERTY = "AdminUnitsCache";
@@ -68,7 +65,7 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
     private final AddressToPeliasMapper addressMapper;
     private final AddressToStreetMapper addressToStreetMapper;
 
-    public StopPlacesDataRouteBuilder(
+    public AddressesDataRouteBuilder(
             KakkaBlobStoreService kakkaBlobStoreService,
             BalhutBlobStoreService balhutBlobStoreService,
             AddressToPeliasMapper addressMapper,
@@ -82,9 +79,9 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
     private static final AtomicBoolean readyToProcess = new AtomicBoolean(true);
 
     public static boolean readyToProcess() {
-        boolean readyToProcess = StopPlacesDataRouteBuilder.readyToProcess.get();
+        boolean readyToProcess = AddressesDataRouteBuilder.readyToProcess.get();
         if (readyToProcess) {
-            StopPlacesDataRouteBuilder.readyToProcess.set(false);
+            AddressesDataRouteBuilder.readyToProcess.set(false);
         }
         return readyToProcess;
     }
@@ -95,7 +92,7 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
         errorHandler(defaultErrorHandler()
                 .redeliveryDelay(redeliveryDelay)
                 .maximumRedeliveries(maxRedelivery)
-                .onRedelivery(StopPlacesDataRouteBuilder::logRedelivery)
+                .onRedelivery(AddressesDataRouteBuilder::logRedelivery)
                 .useExponentialBackOff()
                 .backOffMultiplier(backOffMultiplier)
                 .logExhausted(true)
@@ -105,8 +102,8 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
                 .to("direct:makeCSV");
 
         from("direct:makeCSV")
-                .filter(method(StopPlacesDataRouteBuilder.class, "readyToProcess"))
-                .to("direct:cacheAdminUnits")
+                .filter(method(AddressesDataRouteBuilder.class, "readyToProcess"))
+//                .to("direct:cacheAdminUnits")
                 .process(this::loadAddressesFile)
                 .process(this::unzipAddressesFileToWorkingDirectory)
                 .process(this::readAddressesCSVFile)
@@ -146,7 +143,13 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
         logger.debug("Parsing the stop place Netex file.");
         var parser = new NetexParser();
         try (Stream<Path> paths = Files.walk(Paths.get(balhutWorkDir + "/adminUnits"))) {
-            paths.filter(Files::isRegularFile).findFirst().ifPresent(path -> {
+            paths.filter(Files::isRegularFile).filter(path -> {
+                try {
+                    return !Files.isHidden(path);
+                } catch (IOException e) {
+                    return false;
+                }
+            }).findFirst().ifPresent(path -> {
                 try (InputStream inputStream = new FileInputStream(path.toFile())) {
                     exchange.getIn().setBody(parser.parse(inputStream));
                 } catch (Exception e) {
@@ -224,12 +227,12 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
 
         long startTime = System.nanoTime();
 
-        Comparator<PeliasDocument> peliasDocumentComparator = Comparator
+/*        Comparator<PeliasDocument> peliasDocumentComparator = Comparator
                 .comparing(PeliasDocument::addressParts, Comparator.comparing(AddressParts::getStreet))
                 .thenComparing(PeliasDocument::parent, Comparator.comparing((Parent parent) -> parent.getParentFields().get(Parent.FieldName.LOCALITY).id()));
 
         List<PeliasDocument> sortedPeliasDocuments = peliasDocuments.stream().sorted(peliasDocumentComparator).toList();
-
+*/
         // Create separate document per unique street
         peliasDocuments.addAll(addressToStreetMapper.createStreetPeliasDocumentsFromAddresses(peliasDocuments));
 

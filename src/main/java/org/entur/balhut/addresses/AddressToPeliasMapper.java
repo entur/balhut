@@ -33,8 +33,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 public class AddressToPeliasMapper {
 
@@ -88,12 +86,16 @@ public class AddressToPeliasMapper {
 
     private Parent toParent(KartverketAddress address, GeoPoint centerPoint, AdminUnitsCache adminUnitsCache) {
 
-        // this will probably add locality, county and country.
-        Parent parent = Parents.createParentForTopographicPlaceRef(
-                "KVE:TopographicPlace:" + address.getFullKommuneNo(),
-                centerPoint,
-                adminUnitsCache
-        );
+        Parent parent = null;
+
+        if(adminUnitsCache != null) {
+            // this will probably add locality, county and country.
+            parent = Parents.createParentForTopographicPlaceRef(
+                    "KVE:TopographicPlace:" + address.getFullKommuneNo(),
+                    centerPoint,
+                    adminUnitsCache
+            );
+        }
 
         if (parent == null) {
             parent = new Parent(Parent.FieldName.LOCALITY, new Parent.Field("KVE:TopographicPlace:" + address.getFullKommuneNo(), address.getFullKommuneNo()));

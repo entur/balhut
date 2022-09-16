@@ -18,7 +18,6 @@
 
 package org.entur.balhut.services;
 
-import org.apache.camel.Header;
 import org.entur.balhut.blobStoreRepository.BlobStoreRepository;
 
 import java.io.InputStream;

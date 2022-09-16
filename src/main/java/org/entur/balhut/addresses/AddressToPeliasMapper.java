@@ -19,12 +19,10 @@ package org.entur.balhut.addresses;
 import org.entur.balhut.addresses.coordinates.GeometryTransformer;
 import org.entur.balhut.addresses.kartverket.KartverketAddress;
 import org.entur.balhut.addresses.kartverket.KartverketCoordinatSystemMapper;
-import org.entur.balhut.adminUnitsCache.AdminUnitsCache;
 import org.entur.balhut.peliasDocument.model.AddressParts;
 import org.entur.balhut.peliasDocument.model.GeoPoint;
 import org.entur.balhut.peliasDocument.model.Parent;
 import org.entur.balhut.peliasDocument.model.PeliasDocument;
-import org.entur.balhut.peliasDocument.stopPlacestoPeliasDocument.Parents;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -32,8 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class AddressToPeliasMapper {
@@ -47,14 +43,14 @@ public class AddressToPeliasMapper {
         this.popularity = popularity;
     }
 
-    public PeliasDocument toPeliasDocument(KartverketAddress address, AdminUnitsCache adminUnitsCache) {
+    public PeliasDocument toPeliasDocument(KartverketAddress address) {
         PeliasDocument document = new PeliasDocument("address", address.getAddresseId());
         document.setAddressParts(toAddressParts(address));
 
         GeoPoint centerPoint = toCenterPoint(address);
         document.setCenterPoint(centerPoint);
 
-        document.setParent(toParent(address, centerPoint, adminUnitsCache));
+        document.setParent(toParent(address, centerPoint));
 
         document.addDefaultName(toName(address));
         document.setCategory(address.getType());
@@ -86,19 +82,10 @@ public class AddressToPeliasMapper {
         return null;
     }
 
-    private Parent toParent(KartverketAddress address, GeoPoint centerPoint, AdminUnitsCache adminUnitsCache) {
+    private Parent toParent(KartverketAddress address, GeoPoint centerPoint) {
 
         // this will probably add locality, county and country.
-        Parent parent = Parents.createParentForTopographicPlaceRef(
-                "KVE:TopographicPlace:" + address.getFullKommuneNo(),
-                centerPoint,
-                adminUnitsCache
-        );
-
-        if (parent == null) {
-            parent = new Parent(Parent.FieldName.LOCALITY, new Parent.Field("KVE:TopographicPlace:" + address.getFullKommuneNo(), address.getFullKommuneNo()));
-        }
-
+        Parent parent = new Parent(Parent.FieldName.LOCALITY, new Parent.Field("KVE:TopographicPlace:" + address.getFullKommuneNo(), address.getFullKommuneNo()));
         parent.addOrReplaceParentField(Parent.FieldName.POSTAL_CODE, new Parent.Field(address.getPostnrn(), address.getPostnummerområde()));
         parent.addOrReplaceParentField(Parent.FieldName.BOROUGH, new Parent.Field(address.getGrunnkretsnr(), address.getGrunnkretsnavn()));
         return parent;

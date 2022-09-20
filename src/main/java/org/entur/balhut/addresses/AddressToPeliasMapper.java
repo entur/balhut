@@ -18,11 +18,8 @@ package org.entur.balhut.addresses;
 
 import org.entur.balhut.addresses.coordinates.GeometryTransformer;
 import org.entur.balhut.addresses.kartverket.KartverketAddress;
-import org.entur.balhut.addresses.kartverket.KartverketCoordinatSystemMapper;
-import org.entur.balhut.peliasDocument.model.AddressParts;
-import org.entur.balhut.peliasDocument.model.GeoPoint;
-import org.entur.balhut.peliasDocument.model.Parent;
-import org.entur.balhut.peliasDocument.model.PeliasDocument;
+import org.entur.balhut.addresses.kartverket.KartverketCoordinateSystemMapper;
+import org.entur.geocoder.model.*;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -34,6 +31,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class AddressToPeliasMapper {
 
+    public static final String DEFAULT_SOURCE = "kartverket";
+    public static final String DEFAULT_LAYER = "address";
+
     // Use unique source for addresses to allow for filtering them out from pelias autocomplete
     private final long popularity;
     private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -44,16 +44,16 @@ public class AddressToPeliasMapper {
     }
 
     public PeliasDocument toPeliasDocument(KartverketAddress address) {
-        PeliasDocument document = new PeliasDocument("address", address.getAddresseId());
+        PeliasDocument document = new PeliasDocument(DEFAULT_LAYER, DEFAULT_SOURCE, address.getAddresseId());
         document.setAddressParts(toAddressParts(address));
 
         GeoPoint centerPoint = toCenterPoint(address);
         document.setCenterPoint(centerPoint);
 
-        document.setParent(toParent(address, centerPoint));
+        document.setParents(toParents(address, centerPoint));
 
-        document.addDefaultName(toName(address));
-        document.setCategory(address.getType());
+        document.setDefaultName(toName(address));
+        document.addCategory(address.getType());
         document.setPopularity(popularity);
         return document;
     }
@@ -66,7 +66,7 @@ public class AddressToPeliasMapper {
         if (address.getNord() == null || address.getOst() == null) {
             return null;
         }
-        String utmZone = KartverketCoordinatSystemMapper.toUTMZone(address.getKoordinatsystemKode());
+        String utmZone = KartverketCoordinateSystemMapper.toUTMZone(address.getKoordinatsystemKode());
         if (utmZone == null) {
             logger.info("Ignoring center point for address with non-utm coordinate system: " + address.getKoordinatsystemKode());
             return null;
@@ -82,21 +82,20 @@ public class AddressToPeliasMapper {
         return null;
     }
 
-    private Parent toParent(KartverketAddress address, GeoPoint centerPoint) {
+    private Parents toParents(KartverketAddress address, GeoPoint centerPoint) {
 
         // this will probably add locality, county and country.
-        Parent parent = new Parent(Parent.FieldName.LOCALITY, new Parent.Field("KVE:TopographicPlace:" + address.getFullKommuneNo(), address.getFullKommuneNo()));
-        parent.addOrReplaceParentField(Parent.FieldName.POSTAL_CODE, new Parent.Field(address.getPostnrn(), address.getPostnummerområde()));
-        parent.addOrReplaceParentField(Parent.FieldName.BOROUGH, new Parent.Field(address.getGrunnkretsnr(), address.getGrunnkretsnavn()));
-        return parent;
+        Parents parents = new Parents(DEFAULT_SOURCE);
+        parents.addOrReplaceParent(ParentType.LOCALITY,"KVE:TopographicPlace:" + address.getFullKommuneNo(), address.getFullKommuneNo());
+        parents.addOrReplaceParent(ParentType.POSTAL_CODE, address.getPostnrn(), address.getPostnummerområde());
+        parents.addOrReplaceParent(ParentType.BOROUGH, address.getGrunnkretsnr(), address.getGrunnkretsnavn());
+        return parents;
     }
 
     private AddressParts toAddressParts(KartverketAddress address) {
-        AddressParts addressParts = new AddressParts();
-        addressParts.setName(address.getAddressenavn());
-        addressParts.setStreet(address.getAddressenavn());
-        addressParts.setNumber(address.getNr() + address.getBokstav());
-        addressParts.setZip(address.getPostnrn());
-        return addressParts;
+        return new AddressParts(
+                address.getAddressenavn(),
+                address.getNr() + address.getBokstav(),
+                address.getPostnrn());
     }
 }

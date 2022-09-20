@@ -50,34 +50,30 @@ import java.util.Map;
  * 51   NGO 56A (Møre)
  * 52   NGO 56B (Møre)
  */
-public class KartverketCoordinatSystemMapper {
+public class KartverketCoordinateSystemMapper {
 
+    private static final Map<String, String> COORDINATE_SYSTEM_MAPPING = new HashMap<>() {{
 
-    private static final Map<String, String> COORDSYS_MAPPING;
+        // TODO: Trenger vi de gamle koder?
+        put("21", "31");
+        put("22", "32");
+        put("23", "33");
+        put("24", "34");
+        put("25", "35");
+        put("26", "36");
 
-    static {
-        COORDSYS_MAPPING = new HashMap<>();
-        COORDSYS_MAPPING.put("21", "31");
-        COORDSYS_MAPPING.put("22", "32");
-        COORDSYS_MAPPING.put("23", "33");
-        COORDSYS_MAPPING.put("24", "34");
-        COORDSYS_MAPPING.put("25", "35");
-        COORDSYS_MAPPING.put("26", "36");
-
-        // EPSG to utm maping since new dataset form kartverket uses epsg kodes
+        // EPSG to utm mapping since new dataset form kartverket uses EPSG codes
         // https://register.geonorge.no/epsg-koder?register=SOSI+kodelister&text=
 
-        COORDSYS_MAPPING.put("25831", "31");
-        COORDSYS_MAPPING.put("25832", "32");
-        COORDSYS_MAPPING.put("25833", "33");
-        COORDSYS_MAPPING.put("25834", "34");
-        COORDSYS_MAPPING.put("25835", "35");
-        COORDSYS_MAPPING.put("25836", "36");
-
-    }
+        put("25831", "31");
+        put("25832", "32");
+        put("25833", "33");
+        put("25834", "34");
+        put("25835", "35");
+        put("25836", "36");
+    }};
 
     public static String toUTMZone(String kartverketCoordinateSystemCode) {
-        return COORDSYS_MAPPING.get(kartverketCoordinateSystemCode);
+        return COORDINATE_SYSTEM_MAPPING.get(kartverketCoordinateSystemCode);
     }
-
 }

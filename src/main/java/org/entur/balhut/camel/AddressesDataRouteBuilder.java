@@ -1,17 +1,17 @@
 package org.entur.balhut.camel;
 
 import org.apache.camel.Exchange;
-import org.apache.camel.builder.RouteBuilder;
 import org.entur.balhut.addresses.AddressToPeliasMapper;
 import org.entur.balhut.addresses.AddressToStreetMapper;
-import org.entur.balhut.addresses.kartverket.KartverketAddress;
+import org.entur.balhut.addresses.kartverket.KartverketAddressList;
 import org.entur.balhut.addresses.kartverket.KartverketAddressReader;
-import org.entur.balhut.csv.PeliasDocumentToCSV;
-import org.entur.balhut.peliasDocument.model.AddressParts;
-import org.entur.balhut.peliasDocument.model.Parent;
-import org.entur.balhut.peliasDocument.model.PeliasDocument;
-import org.entur.balhut.services.BalhutBlobStoreService;
-import org.entur.balhut.services.KakkaBlobStoreService;
+import org.entur.balhut.blobStore.BalhutBlobStoreService;
+import org.entur.balhut.blobStore.KakkaBlobStoreService;
+import org.entur.geocoder.Utilities;
+import org.entur.geocoder.ZipUtilities;
+import org.entur.geocoder.camel.ErrorHandlerRouteBuilder;
+import org.entur.geocoder.csv.CSVCreator;
+import org.entur.geocoder.model.PeliasDocumentList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,31 +21,15 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Component
-public class StopPlacesDataRouteBuilder extends RouteBuilder {
+public class AddressesDataRouteBuilder extends ErrorHandlerRouteBuilder {
 
-    private static final Logger logger = LoggerFactory.getLogger(StopPlacesDataRouteBuilder.class);
+    private static final Logger logger = LoggerFactory.getLogger(AddressesDataRouteBuilder.class);
 
     private static final String OUTPUT_FILENAME_HEADER = "balhutOutputFilename";
-    private static final String ADMIN_UNITS_CACHE_PROPERTY = "AdminUnitsCache";
-
-    @Value("${balhut.camel.redelivery.max:3}")
-    private int maxRedelivery;
-
-    @Value("${balhut.camel.redelivery.delay:5000}")
-    private int redeliveryDelay;
-
-    @Value("${balhut.camel.redelivery.backoff.multiplier:3}")
-    private int backOffMultiplier;
-
-    @Value("${blobstore.gcs.kakka.tiamat.geocoder.file:tiamat/geocoder/tiamat_export_geocoder_latest.zip}")
-    private String tiamatGeocoderFile;
 
     @Value("${blobstore.gcs.kakka.kartverket.addresses.folder:kartverket/addresses}")
     private String kartverketAddressesFolder;
@@ -58,11 +42,16 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
     private final AddressToPeliasMapper addressMapper;
     private final AddressToStreetMapper addressToStreetMapper;
 
-    public StopPlacesDataRouteBuilder(
+    public AddressesDataRouteBuilder(
             KakkaBlobStoreService kakkaBlobStoreService,
             BalhutBlobStoreService balhutBlobStoreService,
             AddressToPeliasMapper addressMapper,
-            AddressToStreetMapper addressToStreetMapper) {
+            AddressToStreetMapper addressToStreetMapper,
+            @Value("${balhut.camel.redelivery.max:3}") int maxRedelivery,
+            @Value("${balhut.camel.redelivery.delay:5000}") int redeliveryDelay,
+            @Value("${balhut.camel.redelivery.backoff.multiplier:3}") int backOffMultiplier) {
+
+        super(maxRedelivery, redeliveryDelay, backOffMultiplier);
         this.kakkaBlobStoreService = kakkaBlobStoreService;
         this.balhutBlobStoreService = balhutBlobStoreService;
         this.addressMapper = addressMapper;
@@ -72,23 +61,13 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
     @Override
     public void configure() {
 
-        errorHandler(defaultErrorHandler()
-                .redeliveryDelay(redeliveryDelay)
-                .maximumRedeliveries(maxRedelivery)
-                .onRedelivery(StopPlacesDataRouteBuilder::logRedelivery)
-                .useExponentialBackOff()
-                .backOffMultiplier(backOffMultiplier)
-                .logExhausted(true)
-                .logRetryStackTrace(true));
-
         from("direct:makeCSV")
-                .filter(method(StopPlacesDataRouteBuilder.class, "readyToProcess"))
                 .process(this::loadAddressesFile)
                 .process(this::unzipAddressesFileToWorkingDirectory)
                 .process(this::readAddressesCSVFile)
                 .process(this::createPeliasDocumentsForAllIndividualAddresses)
                 .process(this::addPeliasDocumentForStreets)
-                .bean(PeliasDocumentToCSV::new)
+                .process(this::createCSVFile)
                 .process(this::setOutputFilenameHeader)
                 .process(this::zipCSVFile)
                 .process(this::uploadCSVFile)
@@ -112,9 +91,9 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
     }
 
     private void readAddressesCSVFile(Exchange exchange) {
-        logger.debug("Read addresses CSV file.");
+        logger.debug("Read addresses CSV file");
         try (Stream<Path> paths = Files.walk(Paths.get(balhutWorkDir + "/addresses"))) {
-            paths.filter(Files::isRegularFile).findFirst().ifPresent(path -> {
+            paths.filter(Utilities::isValidFile).findFirst().ifPresent(path -> {
                 try (InputStream inputStream = new FileInputStream(path.toFile())) {
                     exchange.getIn().setBody(new KartverketAddressReader().read(inputStream));
                 } catch (Exception e) {
@@ -129,14 +108,14 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
     private void createPeliasDocumentsForAllIndividualAddresses(Exchange exchange) {
         logger.debug("Create peliasDocuments for addresses");
 
-        Collection<KartverketAddress> addresses = exchange.getIn().getBody(Collection.class);
+        KartverketAddressList addresses = exchange.getIn().getBody(KartverketAddressList.class);
 
         long startTime = System.nanoTime();
 
         // Create documents for all individual addresses
-        List<PeliasDocument> peliasDocuments = addresses.parallelStream()
+        PeliasDocumentList peliasDocuments = addresses.parallelStream()
                 .map(addressMapper::toPeliasDocument)
-                .collect(Collectors.toList());
+                .collect(Collectors.toCollection(PeliasDocumentList::new));
 
         long endTime = System.nanoTime();
         long duration = (endTime - startTime) / 1000000;
@@ -147,9 +126,9 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
     }
 
     private void addPeliasDocumentForStreets(Exchange exchange) {
-        logger.debug("Add peliasDocuments for streets.");
+        logger.debug("Add peliasDocuments for streets");
 
-        List<PeliasDocument> peliasDocuments = exchange.getIn().getBody(List.class);
+        PeliasDocumentList peliasDocuments = exchange.getIn().getBody(PeliasDocumentList.class);
 
         long startTime = System.nanoTime();
 
@@ -162,6 +141,12 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
         logger.debug("Add peliasDocuments for streets duration(ms): " + duration);
 
         exchange.getIn().setBody(peliasDocuments);
+    }
+
+    private void createCSVFile(Exchange exchange) {
+        logger.debug("Creating CSV file for PeliasDocuments");
+        PeliasDocumentList peliasDocuments = exchange.getIn().getBody(PeliasDocumentList.class);
+        exchange.getIn().setBody(CSVCreator.create(peliasDocuments));
     }
 
     private void setOutputFilenameHeader(Exchange exchange) {
@@ -195,14 +180,5 @@ public class StopPlacesDataRouteBuilder extends RouteBuilder {
                 "current",
                 new ByteArrayInputStream(currentCSVFileName.getBytes())
         );
-    }
-
-    private static void logRedelivery(Exchange exchange) {
-        var redeliveryCounter = exchange.getIn().getHeader("CamelRedeliveryCounter", Integer.class);
-        var redeliveryMaxCounter = exchange.getIn().getHeader("CamelRedeliveryMaxCounter", Integer.class);
-        var camelCaughtThrowable = exchange.getProperty("CamelExceptionCaught", Throwable.class);
-
-        logger.warn("Exchange failed, redelivering the message locally, attempt {}/{}...",
-                redeliveryCounter, redeliveryMaxCounter, camelCaughtThrowable);
     }
 }

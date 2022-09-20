@@ -16,9 +16,10 @@
 
 package org.entur.balhut.addresses;
 
-import org.entur.balhut.peliasDocument.model.AddressParts;
-import org.entur.balhut.peliasDocument.model.Parent;
-import org.entur.balhut.peliasDocument.model.PeliasDocument;
+import org.entur.geocoder.model.AddressParts;
+import org.entur.geocoder.model.ParentType;
+import org.entur.geocoder.model.PeliasDocument;
+import org.entur.geocoder.model.PeliasDocumentList;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
@@ -26,6 +27,9 @@ import org.springframework.util.ObjectUtils;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.entur.balhut.addresses.AddressToPeliasMapper.DEFAULT_LAYER;
+import static org.entur.balhut.addresses.AddressToPeliasMapper.DEFAULT_SOURCE;
 
 /**
  * Create "street" documents for Pelias from addresses.
@@ -47,37 +51,34 @@ public class AddressToStreetMapper {
         this.popularity = popularity;
     }
 
-    public List<PeliasDocument> createStreetPeliasDocumentsFromAddresses(Collection<PeliasDocument> addresses) {
-        Collection<List<PeliasDocument>> addressesPerStreet =
+    public PeliasDocumentList createStreetPeliasDocumentsFromAddresses(PeliasDocumentList addresses) {
+        Collection<PeliasDocumentList> addressesPerStreet =
                 addresses.stream()
                         .filter(address ->
-                                address.addressParts() != null && !ObjectUtils.isEmpty(address.addressParts().getStreet())
+                                address.getAddressParts() != null && !ObjectUtils.isEmpty(address.getAddressParts().street())
                         ).collect(Collectors.groupingBy(
                                 UniqueStreetKey::new,
-                                Collectors.mapping(Function.identity(), Collectors.toList()))
+                                Collectors.mapping(Function.identity(), Collectors.toCollection(PeliasDocumentList::new)))
                         ).values();
 
         return addressesPerStreet.stream()
-                .map(this::createPeliasStreetDocFromAddresses).collect(Collectors.toList());
+                .map(this::createPeliasStreetDocFromAddresses).collect(Collectors.toCollection(PeliasDocumentList::new));
     }
 
-    private PeliasDocument createPeliasStreetDocFromAddresses(List<PeliasDocument> addressesOnStreet) {
+    private PeliasDocument createPeliasStreetDocFromAddresses(PeliasDocumentList addressesOnStreet) {
         PeliasDocument templateAddress = getAddressRepresentingStreet(addressesOnStreet);
 
-        String streetName = templateAddress.addressParts().getStreet();
-        String uniqueId = templateAddress.parent().getParentFields().get(Parent.FieldName.LOCALITY).id() + "-" + streetName;
-        PeliasDocument streetDocument = new PeliasDocument("address", uniqueId);
+        String streetName = templateAddress.getAddressParts().street();
+        String uniqueId = templateAddress.getParents().idFor(ParentType.LOCALITY) + "-" + streetName;
+        PeliasDocument streetDocument = new PeliasDocument(DEFAULT_LAYER, DEFAULT_SOURCE, uniqueId);
 
-        streetDocument.addDefaultName(streetName);
-        streetDocument.setParent(templateAddress.parent());
+        streetDocument.setDefaultName(streetName);
+        streetDocument.setParents(templateAddress.getParents());
 
-        streetDocument.setCenterPoint(templateAddress.centerPoint());
-        AddressParts addressParts = new AddressParts();
-        addressParts.setName(streetName);
-        addressParts.setStreet(streetName);
-        streetDocument.setAddressParts(addressParts);
+        streetDocument.setCenterPoint(templateAddress.getCenterPoint());
+        streetDocument.setAddressParts(new AddressParts(streetName));
 
-        streetDocument.setCategory(STREET_CATEGORY);
+        streetDocument.addCategory(STREET_CATEGORY);
         streetDocument.setPopularity(popularity);
 
         return streetDocument;
@@ -87,15 +88,15 @@ public class AddressToStreetMapper {
      * Use median address in street (ordered by number + alpha) as representative of the street.
      */
     private static PeliasDocument getAddressRepresentingStreet(List<PeliasDocument> addressesOnStreet) {
-        addressesOnStreet.sort(Comparator.comparing(o -> o.addressParts().getNumber()));
+        addressesOnStreet.sort(Comparator.comparing(o -> o.getAddressParts().number()));
         return addressesOnStreet.get(addressesOnStreet.size() / 2);
     }
 
     public record UniqueStreetKey(String streetName, String localityId) {
 
-        public UniqueStreetKey(PeliasDocument address) {
-            this(address.addressParts().getStreet(),
-                    address.parent().getParentFields().get(Parent.FieldName.LOCALITY).id()
+        public UniqueStreetKey(PeliasDocument peliasDocument) {
+            this(peliasDocument.getAddressParts().street(),
+                    peliasDocument.getParents().idFor(ParentType.LOCALITY).orElse(null)
             );
         }
 

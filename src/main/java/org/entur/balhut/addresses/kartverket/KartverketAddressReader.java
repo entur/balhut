@@ -25,19 +25,12 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 
 public class KartverketAddressReader {
 
-
-    public Collection<KartverketAddress> read(InputStream inputStream) {
+    public KartverketAddressList read(InputStream inputStream) {
         BeanReader in = getBeanReader(inputStream);
-
-        List<KartverketAddress> addresses = asList(in);
-
+        KartverketAddressList addresses = asList(in);
         in.close();
         return addresses;
     }
@@ -60,8 +53,8 @@ public class KartverketAddressReader {
         return factory.createReader(streamName, buffReader);
     }
 
-    private List<KartverketAddress> asList(BeanReader in) {
-        List<KartverketAddress> addresses = new ArrayList<>();
+    private KartverketAddressList asList(BeanReader in) {
+        KartverketAddressList addresses = new KartverketAddressList();
         Object record;
         while ((record = in.read()) != null) {
             if (in.getLineNumber() == 1) {

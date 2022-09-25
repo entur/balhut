@@ -50,7 +50,7 @@ public class AddressToPeliasMapper {
         GeoPoint centerPoint = toCenterPoint(address);
         document.setCenterPoint(centerPoint);
 
-        document.setParents(toParents(address, centerPoint));
+        setParent(document, address);
 
         document.setDefaultName(toName(address));
         document.addCategory(address.getType());
@@ -59,7 +59,7 @@ public class AddressToPeliasMapper {
     }
 
     private String toName(KartverketAddress address) {
-        return address.getAddressenavn() + " " + address.getNr() + address.getBokstav();
+        return (address.getAddressenavn() + " " + address.getNr() + address.getBokstav()).trim();
     }
 
     private GeoPoint toCenterPoint(KartverketAddress address) {
@@ -82,14 +82,10 @@ public class AddressToPeliasMapper {
         return null;
     }
 
-    private Parents toParents(KartverketAddress address, GeoPoint centerPoint) {
-
-        // this will probably add locality, county and country.
-        Parents parents = new Parents(DEFAULT_SOURCE);
-        parents.addOrReplaceParent(ParentType.LOCALITY,"KVE:TopographicPlace:" + address.getFullKommuneNo(), address.getFullKommuneNo());
-        parents.addOrReplaceParent(ParentType.POSTAL_CODE, address.getPostnrn(), address.getPostnummerområde());
-        parents.addOrReplaceParent(ParentType.BOROUGH, address.getGrunnkretsnr(), address.getGrunnkretsnavn());
-        return parents;
+    private static void setParent(PeliasDocument document, KartverketAddress address) {
+        document.getParents().addOrReplaceParent(ParentType.LOCALITY, "KVE:TopographicPlace:" + address.getFullKommuneNo(), address.getFullKommuneNo());
+        document.getParents().addOrReplaceParent(ParentType.POSTAL_CODE, address.getPostnrn(), address.getPostnummerområde());
+        document.getParents().addOrReplaceParent(ParentType.BOROUGH, address.getGrunnkretsnr(), address.getGrunnkretsnavn());
     }
 
     private AddressParts toAddressParts(KartverketAddress address) {

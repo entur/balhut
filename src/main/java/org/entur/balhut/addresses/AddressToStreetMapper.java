@@ -73,7 +73,8 @@ public class AddressToStreetMapper {
         PeliasDocument streetDocument = new PeliasDocument(DEFAULT_LAYER, DEFAULT_SOURCE, uniqueId);
 
         streetDocument.setDefaultName(streetName);
-        streetDocument.setParents(templateAddress.getParents());
+
+        streetDocument.getParents().addOrReplaceParents(templateAddress.getParents().parents());
 
         streetDocument.setCenterPoint(templateAddress.getCenterPoint());
         streetDocument.setAddressParts(new AddressParts(streetName));
@@ -96,7 +97,7 @@ public class AddressToStreetMapper {
 
         public UniqueStreetKey(PeliasDocument peliasDocument) {
             this(peliasDocument.getAddressParts().street(),
-                    peliasDocument.getParents().idFor(ParentType.LOCALITY).orElse(null)
+                    peliasDocument.getParents().idFor(ParentType.LOCALITY)
             );
         }
 

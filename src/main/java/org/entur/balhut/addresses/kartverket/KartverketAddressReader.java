@@ -16,57 +16,33 @@
 
 package org.entur.balhut.addresses.kartverket;
 
-import org.beanio.BeanReader;
-import org.beanio.StreamFactory;
-import org.beanio.builder.DelimitedParserBuilder;
-import org.beanio.builder.StreamBuilder;
+import com.opencsv.bean.CsvToBean;
+import com.opencsv.bean.CsvToBeanBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.stream.Stream;
 
 public class KartverketAddressReader {
 
-    public KartverketAddressList read(InputStream inputStream) {
-        BeanReader in = getBeanReader(inputStream);
-        KartverketAddressList addresses = asList(in);
-        in.close();
-        return addresses;
-    }
+    private static final Logger LOGGER = LoggerFactory.getLogger(KartverketAddressReader.class);
 
-    private BeanReader getBeanReader(InputStream inputStream) {
-        StreamFactory factory = StreamFactory.newInstance();
-
-        String streamName = "address";
-        StreamBuilder builder = new StreamBuilder(streamName);
-        builder.format("delimited");
-        builder.parser(new DelimitedParserBuilder(';'));
-        builder.readOnly();
-
-        builder.addRecord(KartverketHeader.class);
-        builder.addRecord(KartverketAddress.class);
-        factory.define(builder);
-
-        BufferedReader buffReader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-
-        return factory.createReader(streamName, buffReader);
-    }
-
-    private KartverketAddressList asList(BeanReader in) {
-        KartverketAddressList addresses = new KartverketAddressList();
-        Object record;
-        while ((record = in.read()) != null) {
-            if (in.getLineNumber() == 1) {
-                if (record instanceof KartverketAddress address) {
-                    addresses.add(address);
-                }
-            } else {
-                KartverketAddress address = (KartverketAddress) record;
-                addresses.add(address);
-            }
-
+    public static Stream<KartverketAddress> read(Path csvFilePath) {
+        LOGGER.debug("Reading Kartverket addresses from " + csvFilePath);
+        try {
+            // Intentionally not closing the reader, since we are using the stream further in the process.
+            Reader reader = Files.newBufferedReader(csvFilePath);
+            CsvToBean<KartverketAddress> cb = new CsvToBeanBuilder<KartverketAddress>(reader)
+                    .withType(KartverketAddress.class)
+                    .withSeparator(';')
+                    .withSkipLines(1)
+                    .build();
+            return cb.stream();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
         }
-        return addresses;
     }
 }

@@ -3,7 +3,7 @@ package org.entur.balhut.camel;
 import org.apache.camel.Exchange;
 import org.entur.balhut.addresses.AddressToPeliasMapper;
 import org.entur.balhut.addresses.AddressToStreetMapper;
-import org.entur.balhut.addresses.kartverket.KartverketAddressList;
+import org.entur.balhut.addresses.kartverket.KartverketAddress;
 import org.entur.balhut.addresses.kartverket.KartverketAddressReader;
 import org.entur.balhut.blobStore.BalhutBlobStoreService;
 import org.entur.balhut.blobStore.KakkaBlobStoreService;
@@ -11,7 +11,7 @@ import org.entur.geocoder.Utilities;
 import org.entur.geocoder.ZipUtilities;
 import org.entur.geocoder.camel.ErrorHandlerRouteBuilder;
 import org.entur.geocoder.csv.CSVCreator;
-import org.entur.geocoder.model.PeliasDocumentList;
+import org.entur.geocoder.model.PeliasDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,13 +21,13 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.stream.Collectors;
+import java.util.List;
 import java.util.stream.Stream;
 
 @Component
-public class AddressesDataRouteBuilder extends ErrorHandlerRouteBuilder {
+public class BalhutRouteBuilder extends ErrorHandlerRouteBuilder {
 
-    private static final Logger logger = LoggerFactory.getLogger(AddressesDataRouteBuilder.class);
+    private static final Logger logger = LoggerFactory.getLogger(BalhutRouteBuilder.class);
 
     private static final String OUTPUT_FILENAME_HEADER = "balhutOutputFilename";
 
@@ -42,7 +42,7 @@ public class AddressesDataRouteBuilder extends ErrorHandlerRouteBuilder {
     private final AddressToPeliasMapper addressMapper;
     private final AddressToStreetMapper addressToStreetMapper;
 
-    public AddressesDataRouteBuilder(
+    public BalhutRouteBuilder(
             KakkaBlobStoreService kakkaBlobStoreService,
             BalhutBlobStoreService balhutBlobStoreService,
             AddressToPeliasMapper addressMapper,
@@ -65,8 +65,8 @@ public class AddressesDataRouteBuilder extends ErrorHandlerRouteBuilder {
                 .process(this::loadAddressesFile)
                 .process(this::unzipAddressesFileToWorkingDirectory)
                 .process(this::readAddressesCSVFile)
-                .process(this::createPeliasDocumentsForAllIndividualAddresses)
-                .process(this::addPeliasDocumentForStreets)
+                .process(this::createPeliasDocumentStreamForAllIndividualAddresses)
+                .process(this::addPeliasDocumentStreamForStreets)
                 .process(this::createCSVFile)
                 .process(this::setOutputFilenameHeader)
                 .process(this::zipCSVFile)
@@ -94,58 +94,44 @@ public class AddressesDataRouteBuilder extends ErrorHandlerRouteBuilder {
         logger.debug("Read addresses CSV file");
         try (Stream<Path> paths = Files.walk(Paths.get(balhutWorkDir + "/addresses"))) {
             paths.filter(Utilities::isValidFile).findFirst().ifPresent(path -> {
-                try (InputStream inputStream = new FileInputStream(path.toFile())) {
-                    exchange.getIn().setBody(new KartverketAddressReader().read(inputStream));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                exchange.getIn().setBody(KartverketAddressReader.read(path));
             });
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void createPeliasDocumentsForAllIndividualAddresses(Exchange exchange) {
-        logger.debug("Create peliasDocuments for addresses");
+    private void createPeliasDocumentStreamForAllIndividualAddresses(Exchange exchange) {
+        logger.debug("Converting stream of kartverket addresses to stream of pelias documents.");
 
-        KartverketAddressList addresses = exchange.getIn().getBody(KartverketAddressList.class);
-
-        long startTime = System.nanoTime();
-
+        @SuppressWarnings("unchecked")
+        Stream<KartverketAddress> addresses = exchange.getIn().getBody(Stream.class);
         // Create documents for all individual addresses
-        PeliasDocumentList peliasDocuments = addresses.parallelStream()
-                .map(addressMapper::toPeliasDocument)
-                .collect(Collectors.toCollection(PeliasDocumentList::new));
-
-        long endTime = System.nanoTime();
-        long duration = (endTime - startTime) / 1000000;
-
-        logger.debug("Create documents for all individual addresses duration(ms): " + duration);
+        List<PeliasDocument> peliasDocuments = addresses.parallel()
+                .map(addressMapper::toPeliasDocument).toList();
 
         exchange.getIn().setBody(peliasDocuments);
     }
 
-    private void addPeliasDocumentForStreets(Exchange exchange) {
-        logger.debug("Add peliasDocuments for streets");
+    private void addPeliasDocumentStreamForStreets(Exchange exchange) {
+        logger.debug("Adding peliasDocuments stream for unique streets");
 
-        PeliasDocumentList peliasDocuments = exchange.getIn().getBody(PeliasDocumentList.class);
-
-        long startTime = System.nanoTime();
+        @SuppressWarnings("unchecked")
+        List<PeliasDocument> peliasDocumentsForIndividualAddresses = exchange.getIn().getBody(List.class);
 
         // Create separate document per unique street
-        peliasDocuments.addAll(addressToStreetMapper.createStreetPeliasDocumentsFromAddresses(peliasDocuments));
-
-        long endTime = System.nanoTime();
-        long duration = (endTime - startTime) / 1000000;
-
-        logger.debug("Add peliasDocuments for streets duration(ms): " + duration);
-
-        exchange.getIn().setBody(peliasDocuments);
+        exchange.getIn().setBody(
+                Stream.concat(
+                        peliasDocumentsForIndividualAddresses.stream(),
+                        addressToStreetMapper.createStreetPeliasDocumentsFromAddresses(peliasDocumentsForIndividualAddresses))
+        );
     }
 
     private void createCSVFile(Exchange exchange) {
-        logger.debug("Creating CSV file for PeliasDocuments");
-        PeliasDocumentList peliasDocuments = exchange.getIn().getBody(PeliasDocumentList.class);
+        logger.debug("Creating CSV file form PeliasDocuments stream");
+
+        @SuppressWarnings("unchecked")
+        Stream<PeliasDocument> peliasDocuments = exchange.getIn().getBody(Stream.class);
         exchange.getIn().setBody(CSVCreator.create(peliasDocuments));
     }
 

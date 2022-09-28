@@ -19,7 +19,6 @@ package org.entur.balhut.addresses;
 import org.entur.geocoder.model.AddressParts;
 import org.entur.geocoder.model.ParentType;
 import org.entur.geocoder.model.PeliasDocument;
-import org.entur.geocoder.model.PeliasDocumentList;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
@@ -27,6 +26,7 @@ import org.springframework.util.ObjectUtils;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.entur.balhut.addresses.AddressToPeliasMapper.DEFAULT_LAYER;
 import static org.entur.balhut.addresses.AddressToPeliasMapper.DEFAULT_SOURCE;
@@ -51,21 +51,23 @@ public class AddressToStreetMapper {
         this.popularity = popularity;
     }
 
-    public PeliasDocumentList createStreetPeliasDocumentsFromAddresses(PeliasDocumentList addresses) {
-        Collection<PeliasDocumentList> addressesPerStreet =
-                addresses.stream()
-                        .filter(address ->
-                                address.getAddressParts() != null && !ObjectUtils.isEmpty(address.getAddressParts().street())
-                        ).collect(Collectors.groupingBy(
+    public Stream<PeliasDocument> createStreetPeliasDocumentsFromAddresses(List<PeliasDocument> peliasDocuments) {
+        // TODO: try parallel
+        Collection<ArrayList<PeliasDocument>> addressesPerStreet = peliasDocuments.stream()
+                .filter(AddressToStreetMapper::hasValidAddress)
+                .collect(Collectors.groupingBy(
                                 UniqueStreetKey::new,
-                                Collectors.mapping(Function.identity(), Collectors.toCollection(PeliasDocumentList::new)))
+                                Collectors.mapping(Function.identity(), Collectors.toCollection(ArrayList::new)))
                         ).values();
 
-        return addressesPerStreet.stream()
-                .map(this::createPeliasStreetDocFromAddresses).collect(Collectors.toCollection(PeliasDocumentList::new));
+        return addressesPerStreet.stream().map(this::createPeliasStreetDocFromAddresses);
     }
 
-    private PeliasDocument createPeliasStreetDocFromAddresses(PeliasDocumentList addressesOnStreet) {
+    private static boolean hasValidAddress(PeliasDocument peliasDocument) {
+        return peliasDocument.getAddressParts() != null && !ObjectUtils.isEmpty(peliasDocument.getAddressParts().street());
+    }
+
+    private PeliasDocument createPeliasStreetDocFromAddresses(ArrayList<PeliasDocument> addressesOnStreet) {
         PeliasDocument templateAddress = getAddressRepresentingStreet(addressesOnStreet);
 
         String streetName = templateAddress.getAddressParts().street();

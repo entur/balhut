@@ -83,8 +83,8 @@ public class AddressToPeliasMapper {
     }
 
     private static void setParent(PeliasDocument document, KartverketAddress address) {
-        document.getParents().addOrReplaceParent(ParentType.LOCALITY, "KVE:TopographicPlace:" + address.getFullKommuneNo(), address.getFullKommuneNo());
-        document.getParents().addOrReplaceParent(ParentType.POSTAL_CODE, address.getPostnrn(), address.getPostnummerområde());
+        document.getParents().addOrReplaceParent(ParentType.LOCALITY, "KVE:TopographicPlace:" + address.getKommunenr(), address.getKommunenr());
+        document.getParents().addOrReplaceParent(ParentType.POSTAL_CODE, address.getPostnrn(), address.getPostnummeromrade());
         document.getParents().addOrReplaceParent(ParentType.BOROUGH, address.getGrunnkretsnr(), address.getGrunnkretsnavn());
     }
 

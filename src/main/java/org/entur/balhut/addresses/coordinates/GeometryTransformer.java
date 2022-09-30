@@ -85,7 +85,7 @@ public class GeometryTransformer {
      *
      * @see <a href="https://stackoverflow.com/questions/176137/java-convert-lat-lon-to-utm">Stack Overflow</a>
      */
-    private class UTM2Deg {
+    private static class UTM2Deg {
         double latitude;
         double longitude;
 

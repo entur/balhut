@@ -16,119 +16,50 @@
 
 package org.entur.balhut.addresses.kartverket;
 
+import com.opencsv.bean.CsvBindByName;
+import com.opencsv.bean.CsvBindByPosition;
 import org.apache.commons.lang3.StringUtils;
-import org.beanio.annotation.Field;
-import org.beanio.annotation.Record;
 
-@Record(minOccurs = 0, maxOccurs = -1)
 public class KartverketAddress {
-    @Field(at = 0)
+    @CsvBindByPosition(position = 0)
+//    @CsvBindByName(column = "lokalid")
     private String addresseId;
-    @Field(at = 1)
+    @CsvBindByPosition(position = 1)
+//    @CsvBindByName(column = "kommunenummer")
     private String kommunenr;
-    @Field(at = 3)
+    @CsvBindByPosition(position = 3)
+//    @CsvBindByName(column = "adressetype")
     private String type;
-
-    @Field(at = 4)
-    private String tilleggsnavnKildekode;
-
-    @Field(at = 5)
-    private String tilleggsnavnKildenavn;
-    @Field(at = 6)
-    private String addressekode;
-    @Field(at = 7)
+    @CsvBindByPosition(position = 7)
+//    @CsvBindByName(column = "adressenavn")
     private String addressenavn;
-
-    @Field(at = 8)
+    @CsvBindByPosition(position = 8)
+//    @CsvBindByName(column = "nummer")
     private String nr;
-
-    @Field(at = 9)
+    @CsvBindByPosition(position = 9)
+//    @CsvBindByName(column = "bokstav")
     private String bokstav;
-
-    @Field(at = 10)
-    private String gardsnr;
-
-    @Field(at = 11)
-    private String bruksnr;
-
-    @Field(at = 12)
-    private String festenr;
-
-    @Field(at = 12)
-    private String seksjonsnr;
-    @Field(at = 13)
-    private String undernr;
-
-    @Field(at = 14)
-    private String kortAddressenavn;
-
-    @Field(at = 15)
-    private String kortAddresseTilleggsnavn;
-
-    @Field(at = 16)
+    @CsvBindByPosition(position = 16)
+//    @CsvBindByName(column = "EPSG-kode")
     private String koordinatsystemKode;
-
-    @Field(at = 17)
+    @CsvBindByPosition(position = 17)
+//    @CsvBindByName(column = "Nord")
     private Double nord;
-
-    @Field(at = 18)
+    @CsvBindByPosition(position = 18)
+//    @CsvBindByName(column = "Øst")
     private Double ost;
-
-    @Field(at = 19)
+    @CsvBindByPosition(position = 19)
+//    @CsvBindByName(column = "postnummer")
     private String postnrn;
-
-    @Field(at = 20)
-    private String postnummerområde;
-
-    @Field(at = 21)
+    @CsvBindByPosition(position = 20)
+//    @CsvBindByName(column = "poststed")
+    private String postnummeromrade;
+    @CsvBindByPosition(position = 21)
+//    @CsvBindByName(column = "grunnkretsnummer")
     private String grunnkretsnr;
-
-    @Field(at = 22)
+    @CsvBindByPosition(position = 22)
+//    @CsvBindByName(column = "grunnkretsnavn")
     private String grunnkretsnavn;
-
-    @Field(at = 23)
-    private String kirkesognnr;
-
-    @Field(at = 24)
-    private String kirkesognnavn;
-
-    @Field(at = 26)
-    private String tettstednr;
-
-    @Field(at = 27)
-    private String tettstednavn;
-
-    @Field(at = 28)
-    private String valgkretsnr;
-
-    @Field(at = 29)
-    private String valgkretsnavn;
-
-    protected String pad(String val, int length) {
-        if (val == null) {
-            return null;
-        }
-        return StringUtils.leftPad(val, length, "0");
-    }
-
-    public String getFullKommuneNo() {
-        return pad(kommunenr, 4);
-    }
-
-    public String getFylkesNo() {
-        if (kommunenr == null) {
-            return null;
-        }
-        return getFullKommuneNo().substring(0, 2);
-    }
-
-    public String getFullGrunnkretsNo() {
-        if (kommunenr == null || grunnkretsnr == null) {
-            return null;
-        }
-        return getFullKommuneNo() + pad(grunnkretsnr, 4);
-    }
-
 
     public String getAddresseId() {
         return addresseId;
@@ -136,6 +67,16 @@ public class KartverketAddress {
 
     public void setAddresseId(String addresseId) {
         this.addresseId = addresseId;
+    }
+
+    public String getKommunenr() {
+        return kommunenr != null
+                ? StringUtils.leftPad(kommunenr, 4, "0")
+                : null;
+    }
+
+    public void setKommunenr(String kommunenr) {
+        this.kommunenr = kommunenr;
     }
 
     public String getType() {
@@ -146,36 +87,12 @@ public class KartverketAddress {
         this.type = type;
     }
 
-    public String getKommunenr() {
-        return kommunenr;
-    }
-
-    public void setKommunenr(String kommunenr) {
-        this.kommunenr = kommunenr;
-    }
-
-    public String getAddressekode() {
-        return addressekode;
-    }
-
-    public void setAddressekode(String addressekode) {
-        this.addressekode = addressekode;
-    }
-
     public String getAddressenavn() {
         return addressenavn;
     }
 
     public void setAddressenavn(String addressenavn) {
         this.addressenavn = addressenavn;
-    }
-
-    public String getKortAddressenavn() {
-        return kortAddressenavn;
-    }
-
-    public void setKortAddressenavn(String kortAddressenavn) {
-        this.kortAddressenavn = kortAddressenavn;
     }
 
     public String getNr() {
@@ -194,70 +111,6 @@ public class KartverketAddress {
         this.bokstav = bokstav;
     }
 
-    public String getGardsnr() {
-        return gardsnr;
-    }
-
-    public void setGardsnr(String gardsnr) {
-        this.gardsnr = gardsnr;
-    }
-
-    public String getBruksnr() {
-        return bruksnr;
-    }
-
-    public void setBruksnr(String bruksnr) {
-        this.bruksnr = bruksnr;
-    }
-
-    public String getFestenr() {
-        return festenr;
-    }
-
-    public void setFestenr(String festenr) {
-        this.festenr = festenr;
-    }
-
-    public String getSeksjonsnr() {
-        return seksjonsnr;
-    }
-
-    public void setSeksjonsnr(String seksjonsnr) {
-        this.seksjonsnr = seksjonsnr;
-    }
-
-    public String getUndernr() {
-        return undernr;
-    }
-
-    public void setUndernr(String undernr) {
-        this.undernr = undernr;
-    }
-
-    public String getKortAddresseTilleggsnavn() {
-        return kortAddresseTilleggsnavn;
-    }
-
-    public void setKortAddresseTilleggsnavn(String kortAddresseTilleggsnavn) {
-        this.kortAddresseTilleggsnavn = kortAddresseTilleggsnavn;
-    }
-
-    public String getTilleggsnavnKildekode() {
-        return tilleggsnavnKildekode;
-    }
-
-    public void setTilleggsnavnKildekode(String tilleggsnavnKildekode) {
-        this.tilleggsnavnKildekode = tilleggsnavnKildekode;
-    }
-
-    public String getTilleggsnavnKildenavn() {
-        return tilleggsnavnKildenavn;
-    }
-
-    public void setTilleggsnavnKildenavn(String tilleggsnavnKildenavn) {
-        this.tilleggsnavnKildenavn = tilleggsnavnKildenavn;
-    }
-
     public String getKoordinatsystemKode() {
         return koordinatsystemKode;
     }
@@ -265,7 +118,6 @@ public class KartverketAddress {
     public void setKoordinatsystemKode(String koordinatsystemKode) {
         this.koordinatsystemKode = koordinatsystemKode;
     }
-
 
     public Double getNord() {
         return nord;
@@ -283,6 +135,22 @@ public class KartverketAddress {
         this.ost = ost;
     }
 
+    public String getPostnrn() {
+        return postnrn;
+    }
+
+    public void setPostnrn(String postnrn) {
+        this.postnrn = postnrn;
+    }
+
+    public String getPostnummeromrade() {
+        return postnummeromrade;
+    }
+
+    public void setPostnummeromrade(String postnummeromrade) {
+        this.postnummeromrade = postnummeromrade;
+    }
+
     public String getGrunnkretsnr() {
         return grunnkretsnr;
     }
@@ -297,69 +165,5 @@ public class KartverketAddress {
 
     public void setGrunnkretsnavn(String grunnkretsnavn) {
         this.grunnkretsnavn = grunnkretsnavn;
-    }
-
-    public String getKirkesognnr() {
-        return kirkesognnr;
-    }
-
-    public void setKirkesognnr(String kirkesognnr) {
-        this.kirkesognnr = kirkesognnr;
-    }
-
-    public String getKirkesognnavn() {
-        return kirkesognnavn;
-    }
-
-    public void setKirkesognnavn(String kirkesognnavn) {
-        this.kirkesognnavn = kirkesognnavn;
-    }
-
-    public String getTettstednr() {
-        return tettstednr;
-    }
-
-    public void setTettstednr(String tettstednr) {
-        this.tettstednr = tettstednr;
-    }
-
-    public String getTettstednavn() {
-        return tettstednavn;
-    }
-
-    public void setTettstednavn(String tettstednavn) {
-        this.tettstednavn = tettstednavn;
-    }
-
-    public String getValgkretsnr() {
-        return valgkretsnr;
-    }
-
-    public void setValgkretsnr(String valgkretsnr) {
-        this.valgkretsnr = valgkretsnr;
-    }
-
-    public String getValgkretsnavn() {
-        return valgkretsnavn;
-    }
-
-    public void setValgkretsnavn(String valgkretsnavn) {
-        this.valgkretsnavn = valgkretsnavn;
-    }
-
-    public String getPostnrn() {
-        return postnrn;
-    }
-
-    public void setPostnrn(String postnrn) {
-        this.postnrn = postnrn;
-    }
-
-    public String getPostnummerområde() {
-        return postnummerområde;
-    }
-
-    public void setPostnummerområde(String postnummerområde) {
-        this.postnummerområde = postnummerområde;
     }
 }

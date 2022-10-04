@@ -1,0 +1,13 @@
+apiVersion: v2
+appVersion: "0.0.1"
+description: Addresses converter
+name: balhut
+version: 0.1.0
+keywords:
+  - balhut
+sources:
+  - https://github.com/entur/balhut
+maintainers:
+  - name: 'team-ror'
+    email: team.rutedata@entur.org
+engine: gotpl

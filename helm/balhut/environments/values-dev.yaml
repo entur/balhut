@@ -7,3 +7,6 @@ gcp:
 
   balhut:
     bucketName: balhut-dev
+
+  haya:
+    bucketName: haya-dev

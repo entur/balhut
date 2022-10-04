@@ -7,3 +7,6 @@ gcp:
 
   balhut:
     bucketName: balhut-production
+
+  haya:
+    bucketName: haya-production

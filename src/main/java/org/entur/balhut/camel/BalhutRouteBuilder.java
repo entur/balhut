@@ -71,7 +71,7 @@ public class BalhutRouteBuilder extends ErrorHandlerRouteBuilder {
                 .process(this::setOutputFilenameHeader)
                 .process(this::zipCSVFile)
                 .process(this::uploadCSVFile)
-                .process(this::updateCurrentFile);
+                .process(this::copyCSVFileAsLatestToConfiguredBucket);
     }
 
     private void loadAddressesFile(Exchange exchange) {
@@ -159,12 +159,9 @@ public class BalhutRouteBuilder extends ErrorHandlerRouteBuilder {
         );
     }
 
-    private void updateCurrentFile(Exchange exchange) {
+    private void copyCSVFileAsLatestToConfiguredBucket(Exchange exchange) {
         logger.debug("Updating the current file");
         String currentCSVFileName = exchange.getIn().getHeader(OUTPUT_FILENAME_HEADER, String.class) + ".zip";
-        balhutBlobStoreService.uploadBlob(
-                "current",
-                new ByteArrayInputStream(currentCSVFileName.getBytes())
-        );
+        balhutBlobStoreService.copyBlobAsLatestToTargetBucket(currentCSVFileName);
     }
 }

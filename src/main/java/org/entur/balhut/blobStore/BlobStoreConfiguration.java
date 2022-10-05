@@ -28,7 +28,7 @@ public class BlobStoreConfiguration {
     @Scope("prototype")
     @Profile("local-disk-blobstore")
     public LocalDiskBlobStoreRepository getLocalDiskBlobStoreRepository(
-            @Value("${blobstore.local.folder:files/blob}") String baseFolder) {
+            @Value("${blobstore.local.folder:~//blob}") String baseFolder) {
         return new LocalDiskBlobStoreRepository(baseFolder);
     }
 

@@ -58,7 +58,7 @@ spec:
                   name: application-config
                   readOnly: true
           dnsPolicy: ClusterFirst
-          restartPolicy: Always
+          restartPolicy: OnFailure
           schedulerName: default-scheduler
           securityContext:
             runAsGroup: 1000

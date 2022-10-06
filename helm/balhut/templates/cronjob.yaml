@@ -3,8 +3,8 @@ kind: CronJob
 metadata:
   labels:
     {{- include "common.labels" . | indent 4 }}
-  name: balhut
-  namespace: {{ .Release.Namespace }}
+  name: {{ template "balhut.name" . }}
+  namespace: {{ template "balhut.name" . }}
 spec:
   concurrencyPolicy: Forbid
   failedJobsHistoryLimit: 1
@@ -13,51 +13,58 @@ spec:
       template:
         spec:
           containers:
-          - name: balhut
-            image: {{ .Values.image.identifier }}
-            env:
-              - name: JDK_JAVA_OPTIONS
-                value: -server -Xmx{{ .Values.resources.xmx }} -Xss512k -XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90
-                  -XX:MinHeapFreeRatio=20 -XX:MaxHeapFreeRatio=40 -XX:ActiveProcessorCount={{ .Values.resources.cpuRequest }}
-                  -Dspring.config.location=/etc/application-config/application.properties
-                  -Dfile.encoding=UTF-8
-              - name: TZ
-                value: Europe/Oslo
-            livenessProbe:
-              httpGet:
-                path: /actuator/health/liveness
-                port: {{ .Values.service.http.internalPort }}
-                scheme: HTTP
-              initialDelaySeconds: 140
-              periodSeconds: 10
-              successThreshold: 1
-              failureThreshold: 3
-              timeoutSeconds: 30
-            readinessProbe:
-              httpGet:
-                path: /actuator/health/readiness
-                port: {{ .Values.service.http.internalPort }}
-                scheme: HTTP
-              initialDelaySeconds: 30
-              periodSeconds: 10
-              successThreshold: 1
-              failureThreshold: 3
-              timeoutSeconds: 10
-            resources:
-              limits:
-                cpu: {{ .Values.resources.cpuLimit }}
-                memory: {{ .Values.resources.memLimit }}
-              requests:
-                cpu: {{ .Values.resources.cpuRequest }}
-                memory: {{ .Values.resources.memRequest }}
-            volumeMounts:
-              - mountPath: /etc/application-config
-                name: application-config
-                readOnly: true
+            - name: balhut
+              image: {{ .Values.image.identifier }}
+              env:
+                - name: JDK_JAVA_OPTIONS
+                  value: -server -Xmx{{ .Values.resources.xmx }} -Xss512k -XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90
+                    -XX:MinHeapFreeRatio=20 -XX:MaxHeapFreeRatio=40 -XX:ActiveProcessorCount={{ .Values.resources.cpuRequest }}
+                    -Dspring.config.location=/etc/application-config/application.properties
+                    -Dfile.encoding=UTF-8
+                - name: TZ
+                  value: Europe/Oslo
+              envFrom:
+                - configMapRef:
+                    name: {{ template "balhut.name" . }}-bucket
+              livenessProbe:
+                httpGet:
+                  path: /actuator/health/liveness
+                  port: {{ .Values.service.http.internalPort }}
+                  scheme: HTTP
+                initialDelaySeconds: 140
+                periodSeconds: 10
+                successThreshold: 1
+                failureThreshold: 3
+                timeoutSeconds: 30
+              readinessProbe:
+                httpGet:
+                  path: /actuator/health/readiness
+                  port: {{ .Values.service.http.internalPort }}
+                  scheme: HTTP
+                initialDelaySeconds: 30
+                periodSeconds: 10
+                successThreshold: 1
+                failureThreshold: 3
+                timeoutSeconds: 10
+              resources:
+                limits:
+                  cpu: {{ .Values.resources.cpuLimit }}
+                  memory: {{ .Values.resources.memLimit }}
+                requests:
+                  cpu: {{ .Values.resources.cpuRequest }}
+                  memory: {{ .Values.resources.memRequest }}
+              volumeMounts:
+                - mountPath: /etc/application-config
+                  name: application-config
+                  readOnly: true
           dnsPolicy: ClusterFirst
           restartPolicy: Always
           schedulerName: default-scheduler
-          securityContext: { }
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          serviceAccountName: application
           terminationGracePeriodSeconds: 80
           volumes:
             - name: application-config

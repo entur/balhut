@@ -1,12 +1,10 @@
 env: production
 replicas: 1
 
-gcp:
+gcs:
   kakka:
     bucketName: kakka-production
-
   balhut:
-    bucketName: balhut-production
-
+    bucketName: ent-gcs-balhut-prd-001
   haya:
     bucketName: haya-production

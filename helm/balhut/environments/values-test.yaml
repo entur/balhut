@@ -1,12 +1,10 @@
 env: test
 replicas: 1
 
-gcp:
+gcs:
   kakka:
     bucketName: kakka-test
-
   balhut:
-    bucketName: balhut-test
-
+    bucketName: ent-gcs-balhut-tst-001
   haya:
     bucketName: haya-test

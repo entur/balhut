@@ -1,12 +1,10 @@
 env: dev
 replicas: 1
 
-gcp:
+gcs:
   kakka:
     bucketName: kakka-dev
-
   balhut:
-    bucketName: balhut-dev
-
+    bucketName: ent-gcs-balhut-dev-001
   haya:
     bucketName: haya-dev

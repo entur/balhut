@@ -2,9 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 data:
   application.properties: |+
-    blobstore.gcs.balhut.bucket.name={{ .Values.gcp.balhut.bucketName }}
-    blobstore.gcs.kakka.bucket.name={{ .Values.gcp.kakka.bucketName }}
-    blobstore.gcs.haya.bucket.name={{ .Values.gcp.haya.bucketName }}
+    blobstore.gcs.balhut.bucket.name=${BUCKET_NAME}
+    blobstore.gcs.kakka.bucket.name={{ .Values.gcs.kakka.bucketName }}
+    blobstore.gcs.haya.bucket.name={{ .Values.gcs.haya.bucketName }}
     blobstore.gcs.latest.filename_without_extension=balhut_latest
     blobstore.gcs.kakka.kartverket.addresses.folder=kartverket/addresses
     blobstore.gcs.haya.import.folder=import
@@ -21,6 +21,6 @@ data:
     logging.level.org.springframework.cloud.task=DEBUG
 metadata:
   name: {{ template "balhut.name" . }}-config
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ template "balhut.name" . }}
   labels:
   {{- include "common.labels" . | indent 4 }}

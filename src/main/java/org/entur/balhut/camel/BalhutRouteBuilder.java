@@ -1,8 +1,8 @@
 package org.entur.balhut.camel;
 
 import org.apache.camel.Exchange;
-import org.entur.balhut.addresses.AddressToPeliasMapper;
-import org.entur.balhut.addresses.AddressToStreetMapper;
+import org.entur.balhut.addresses.PeliasDocumentMapper;
+import org.entur.balhut.addresses.StreetMapper;
 import org.entur.balhut.addresses.kartverket.KartverketAddress;
 import org.entur.balhut.addresses.kartverket.KartverketAddressReader;
 import org.entur.balhut.blobStore.BalhutBlobStoreService;
@@ -39,14 +39,14 @@ public class BalhutRouteBuilder extends ErrorHandlerRouteBuilder {
 
     private final KakkaBlobStoreService kakkaBlobStoreService;
     private final BalhutBlobStoreService balhutBlobStoreService;
-    private final AddressToPeliasMapper addressMapper;
-    private final AddressToStreetMapper addressToStreetMapper;
+    private final PeliasDocumentMapper addressMapper;
+    private final StreetMapper streetMapper;
 
     public BalhutRouteBuilder(
             KakkaBlobStoreService kakkaBlobStoreService,
             BalhutBlobStoreService balhutBlobStoreService,
-            AddressToPeliasMapper addressMapper,
-            AddressToStreetMapper addressToStreetMapper,
+            PeliasDocumentMapper addressMapper,
+            StreetMapper streetMapper,
             @Value("${balhut.camel.redelivery.max:3}") int maxRedelivery,
             @Value("${balhut.camel.redelivery.delay:5000}") int redeliveryDelay,
             @Value("${balhut.camel.redelivery.backoff.multiplier:3}") int backOffMultiplier) {
@@ -55,7 +55,7 @@ public class BalhutRouteBuilder extends ErrorHandlerRouteBuilder {
         this.kakkaBlobStoreService = kakkaBlobStoreService;
         this.balhutBlobStoreService = balhutBlobStoreService;
         this.addressMapper = addressMapper;
-        this.addressToStreetMapper = addressToStreetMapper;
+        this.streetMapper = streetMapper;
     }
 
     @Override
@@ -123,7 +123,7 @@ public class BalhutRouteBuilder extends ErrorHandlerRouteBuilder {
         exchange.getIn().setBody(
                 Stream.concat(
                         peliasDocumentsForIndividualAddresses.stream(),
-                        addressToStreetMapper.createStreetPeliasDocumentsFromAddresses(peliasDocumentsForIndividualAddresses))
+                        streetMapper.createStreetPeliasDocumentsFromAddresses(peliasDocumentsForIndividualAddresses))
         );
     }
 

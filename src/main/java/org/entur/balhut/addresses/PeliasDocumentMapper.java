@@ -29,7 +29,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-public class AddressToPeliasMapper {
+public class PeliasDocumentMapper {
 
     public static final String DEFAULT_SOURCE = "kartverket";
     public static final String DEFAULT_LAYER = "address";
@@ -39,7 +39,7 @@ public class AddressToPeliasMapper {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final GeometryFactory factory = new GeometryFactory();
 
-    public AddressToPeliasMapper(@Value("${pelias.address.boost:2}") long popularity) {
+    public PeliasDocumentMapper(@Value("${pelias.address.boost:2}") long popularity) {
         this.popularity = popularity;
     }
 

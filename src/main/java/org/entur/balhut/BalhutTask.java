@@ -6,11 +6,11 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 @Component
-public class BalhutJob implements CommandLineRunner {
+public class BalhutTask implements CommandLineRunner {
 
     private final CamelContext camelContext;
 
-    public BalhutJob(CamelContext camelContext) {
+    public BalhutTask(CamelContext camelContext) {
         this.camelContext = camelContext;
     }
 

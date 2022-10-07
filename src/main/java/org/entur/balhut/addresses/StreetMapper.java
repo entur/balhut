@@ -28,8 +28,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.entur.balhut.addresses.AddressToPeliasMapper.DEFAULT_LAYER;
-import static org.entur.balhut.addresses.AddressToPeliasMapper.DEFAULT_SOURCE;
+import static org.entur.balhut.addresses.PeliasDocumentMapper.DEFAULT_LAYER;
+import static org.entur.balhut.addresses.PeliasDocumentMapper.DEFAULT_SOURCE;
 
 /**
  * Create "street" documents for Pelias from addresses.
@@ -41,20 +41,19 @@ import static org.entur.balhut.addresses.AddressToPeliasMapper.DEFAULT_SOURCE;
  * NB! Streets are stored in the "address" layer in pelias, as this is prioritized
  */
 @Service
-public class AddressToStreetMapper {
+public class StreetMapper {
 
     private static final String STREET_CATEGORY = "street";
 
     private final long popularity;
 
-    public AddressToStreetMapper(@Value("${pelias.address.street.boost:2}") long popularity) {
+    public StreetMapper(@Value("${pelias.address.street.boost:2}") long popularity) {
         this.popularity = popularity;
     }
 
     public Stream<PeliasDocument> createStreetPeliasDocumentsFromAddresses(List<PeliasDocument> peliasDocuments) {
-        // TODO: try parallel
         Collection<ArrayList<PeliasDocument>> addressesPerStreet = peliasDocuments.stream()
-                .filter(AddressToStreetMapper::hasValidAddress)
+                .filter(StreetMapper::hasValidAddress)
                 .collect(Collectors.groupingBy(
                                 UniqueStreetKey::new,
                                 Collectors.mapping(Function.identity(), Collectors.toCollection(ArrayList::new)))

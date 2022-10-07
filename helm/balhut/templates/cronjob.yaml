@@ -73,4 +73,3 @@ spec:
                 name: {{ template "balhut.name" . }}-config
   schedule: {{ .Values.balhut.schedule }}
   successfulJobsHistoryLimit: 1
-  suspend: true

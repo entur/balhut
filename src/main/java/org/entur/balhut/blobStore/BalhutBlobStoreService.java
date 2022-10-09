@@ -12,8 +12,11 @@ public class BalhutBlobStoreService extends BlobStoreService {
     @Value("${blobstore.gcs.haya.bucket.name:haya-dev}")
     private String targetBucketName;
 
-    @Value("${blobstore.gcs.latest.filename_without_extension:balhut_latest}")
+    @Value("${blobstore.gcs.haya.latest.filename_without_extension:balhut_latest}")
     private String targetFilename;
+
+    @Value("${blobstore.gcs.haya.import.folder:import}")
+    private String targetFolder;
 
     public BalhutBlobStoreService(
             @Value("${blobstore.gcs.balhut.bucket.name:balhut-dev}") String bucketName,
@@ -22,6 +25,6 @@ public class BalhutBlobStoreService extends BlobStoreService {
     }
 
     public void copyBlobAsLatestToTargetBucket(String sourceName) {
-        super.copyBlob(sourceName, targetBucketName, targetFilename + ".zip");
+        super.copyBlob(sourceName, targetBucketName, targetFolder + "/" + targetFilename + ".zip");
     }
 }

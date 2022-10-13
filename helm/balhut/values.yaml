@@ -3,11 +3,11 @@ image:
   imagePullPolicy: Always
 
 resources:
-  cpuLimit: "2"
-  cpuRequest: "1"
-  memLimit: 5700Mi
-  memRequest: 2500Mi
-  xmx: 5000m
+  cpuLimit: "4"
+  memLimit: 9000Mi
+  cpuRequest: "3"
+  memRequest: 8500Mi
+  xmx: 10g
 
 service:
   http:

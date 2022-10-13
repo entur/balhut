@@ -4,9 +4,9 @@ image:
 
 resources:
   cpuLimit: "4"
-  memLimit: 9000Mi
+  memLimit: 11264Mi
   cpuRequest: "3"
-  memRequest: 8500Mi
+  memRequest: 10240Mi
   xmx: 10g
 
 service:

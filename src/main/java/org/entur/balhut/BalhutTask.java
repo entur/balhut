@@ -15,7 +15,7 @@ public class BalhutTask implements CommandLineRunner {
     }
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         FluentProducerTemplate fluentProducerTemplate = camelContext.createFluentProducerTemplate();
         fluentProducerTemplate.to("direct:makeCSV").request();
     }

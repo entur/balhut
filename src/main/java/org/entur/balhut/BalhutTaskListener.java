@@ -6,7 +6,9 @@ import org.springframework.cloud.task.listener.annotation.AfterTask;
 import org.springframework.cloud.task.listener.annotation.BeforeTask;
 import org.springframework.cloud.task.listener.annotation.FailedTask;
 import org.springframework.cloud.task.repository.TaskExecution;
+import org.springframework.stereotype.Component;
 
+@Component
 public class BalhutTaskListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BalhutTaskListener.class);

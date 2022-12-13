@@ -28,9 +28,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.entur.balhut.addresses.PeliasDocumentMapper.DEFAULT_LAYER;
-import static org.entur.balhut.addresses.PeliasDocumentMapper.DEFAULT_SOURCE;
-
 /**
  * Create "street" documents for Pelias from addresses.
  * <p>
@@ -43,7 +40,8 @@ import static org.entur.balhut.addresses.PeliasDocumentMapper.DEFAULT_SOURCE;
 @Service
 public class StreetMapper {
 
-    private static final String STREET_CATEGORY = "street";
+    private static final String DEFAULT_SOURCE = "kartverket";
+    private static final String STREET_LAYER = "street";
 
     private final long popularity;
 
@@ -71,7 +69,7 @@ public class StreetMapper {
 
         String streetName = templateAddress.getAddressParts().street();
         String uniqueId = templateAddress.getParents().idFor(ParentType.LOCALITY) + "-" + streetName;
-        PeliasDocument streetDocument = new PeliasDocument(DEFAULT_LAYER, DEFAULT_SOURCE, uniqueId);
+        PeliasDocument streetDocument = new PeliasDocument(STREET_LAYER, DEFAULT_SOURCE, uniqueId);
 
         streetDocument.setDefaultName(streetName);
 
@@ -80,7 +78,8 @@ public class StreetMapper {
         streetDocument.setCenterPoint(templateAddress.getCenterPoint());
         streetDocument.setAddressParts(new AddressParts(streetName));
 
-        streetDocument.addCategory(STREET_CATEGORY);
+        streetDocument.addCategory("street");
+        streetDocument.addCategory("address");
         streetDocument.setPopularity(popularity);
 
         return streetDocument;

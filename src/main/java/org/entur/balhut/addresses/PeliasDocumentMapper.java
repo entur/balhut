@@ -31,8 +31,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class PeliasDocumentMapper {
 
-    public static final String DEFAULT_SOURCE = "kartverket";
-    public static final String DEFAULT_LAYER = "address";
+    private static final String DEFAULT_SOURCE = "kartverket";
+    private static final String DEFAULT_LAYER = "address";
 
     // Use unique source for addresses to allow for filtering them out from pelias autocomplete
     private final long popularity;
@@ -76,7 +76,8 @@ public class PeliasDocumentMapper {
             Point conv = GeometryTransformer.fromUTM(p, utmZone);
             return new GeoPoint(conv.getY(), conv.getX());
         } catch (Exception e) {
-            logger.info("Ignoring center point for address (" + address.getAddresseId() + ") where geometry transformation failed: " + address.getKoordinatsystemKode());
+            logger.info(
+                    "Ignoring center point for address (" + address.getAddresseId() + ") where geometry transformation failed: " + address.getKoordinatsystemKode());
         }
 
         return null;

@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class PeliasDocumentMapper {
@@ -59,7 +60,7 @@ public class PeliasDocumentMapper {
     }
 
     private String toName(KartverketAddress address) {
-        return (address.getAddressenavn() + " " + address.getNr() + address.getBokstav()).trim();
+        return (address.getNr() + address.getBokstav() + " " + address.getAddressenavn()).trim();
     }
 
     private GeoPoint toCenterPoint(KartverketAddress address) {
@@ -84,9 +85,13 @@ public class PeliasDocumentMapper {
     }
 
     private static void setParent(PeliasDocument document, KartverketAddress address) {
-        document.getParents().addOrReplaceParent(ParentType.LOCALITY, "KVE:TopographicPlace:" + address.getKommunenr(), address.getKommunenr());
-        document.getParents().addOrReplaceParent(ParentType.POSTAL_CODE, address.getPostnrn(), address.getPostnummeromrade());
-        document.getParents().addOrReplaceParent(ParentType.BOROUGH, address.getGrunnkretsnr(), address.getGrunnkretsnavn());
+        document.getParents().addOrReplaceParent(ParentType.LOCALITY, "KVE:TopographicPlace:" + address.getKommunenr(), capitalize(address.getKommunenavn()));
+        document.getParents().addOrReplaceParent(ParentType.POSTAL_CODE, address.getPostnrn(), capitalize(address.getPostnummeromrade()));
+        document.getParents().addOrReplaceParent(ParentType.BOROUGH, address.getGrunnkretsnr(), capitalize(address.getGrunnkretsnavn()));
+    }
+
+    private static String capitalize(String string) {
+        return string == null ? null : StringUtils.capitalize(string.toLowerCase());
     }
 
     private AddressParts toAddressParts(KartverketAddress address) {

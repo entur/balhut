@@ -16,7 +16,6 @@
 
 package org.entur.balhut.addresses.kartverket;
 
-import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvBindByPosition;
 import org.apache.commons.lang3.StringUtils;
 
@@ -27,6 +26,9 @@ public class KartverketAddress {
     @CsvBindByPosition(position = 1)
 //    @CsvBindByName(column = "kommunenummer")
     private String kommunenr;
+    @CsvBindByPosition(position = 2)
+//    @CsvBindByName(column = "kommunenavn")
+    private String kommunenavn;
     @CsvBindByPosition(position = 3)
 //    @CsvBindByName(column = "adressetype")
     private String type;
@@ -77,6 +79,14 @@ public class KartverketAddress {
 
     public void setKommunenr(String kommunenr) {
         this.kommunenr = kommunenr;
+    }
+
+    public String getKommunenavn() {
+        return kommunenavn;
+    }
+
+    public void setKommunenavn(String kommunenavn) {
+        this.kommunenavn = kommunenavn;
     }
 
     public String getType() {

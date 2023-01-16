@@ -16,6 +16,7 @@
     <properties>
         <java.version>17</java.version>
         <geotools.version>26.4</geotools.version>
+        <logstash-logback-encoder.version>7.2</logstash-logback-encoder.version>
         <geocoder-utilities.version>1.1-SNAPSHOT</geocoder-utilities.version>
     </properties>
     <dependencies>
@@ -39,6 +40,11 @@
         </dependency>
 
         <!-- Logback core requires janino -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logstash-logback-encoder.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.codehaus.janino</groupId>
             <artifactId>janino</artifactId>

@@ -1,19 +1,3 @@
-/*
- * Licensed under the EUPL, Version 1.2 or – as soon they will be approved by
- * the European Commission - subsequent versions of the EUPL (the "Licence");
- * You may not use this work except in compliance with the Licence.
- * You may obtain a copy of the Licence at:
- *
- *   https://joinup.ec.europa.eu/software/page/eupl
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the Licence is distributed on an "AS IS" basis,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the Licence for the specific language governing permissions and
- * limitations under the Licence.
- *
- */
-
 package org.entur.balhut.addresses;
 
 import org.entur.balhut.addresses.coordinates.GeometryTransformer;
@@ -30,22 +14,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
-public class PeliasDocumentMapper {
+public class PeliasDocumentAddressMapper {
 
-    private static final String DEFAULT_SOURCE = "kartverket";
-    private static final String DEFAULT_LAYER = "address";
+    private static final String DEFAULT_SOURCE = "KVE";
+    private static final String DEFAULT_LAYER = "Address";
 
     // Use unique source for addresses to allow for filtering them out from pelias autocomplete
     private final long popularity;
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final GeometryFactory factory = new GeometryFactory();
 
-    public PeliasDocumentMapper(@Value("${pelias.address.boost:2}") long popularity) {
+    public PeliasDocumentAddressMapper(@Value("${pelias.address.boost:2}") long popularity) {
         this.popularity = popularity;
     }
 
     public PeliasDocument toPeliasDocument(KartverketAddress address) {
-        PeliasDocument document = new PeliasDocument(DEFAULT_LAYER, DEFAULT_SOURCE, address.getAddresseId());
+        PeliasDocument document = new PeliasDocument(new PeliasId(DEFAULT_SOURCE, DEFAULT_LAYER, address.getAddresseId()));
         document.setAddressParts(toAddressParts(address));
 
         GeoPoint centerPoint = toCenterPoint(address);
@@ -78,16 +62,33 @@ public class PeliasDocumentMapper {
             return new GeoPoint(conv.getY(), conv.getX());
         } catch (Exception e) {
             logger.info(
-                    "Ignoring center point for address (" + address.getAddresseId() + ") where geometry transformation failed: " + address.getKoordinatsystemKode());
+                    "Ignoring center point for address " +
+                            "(" + address.getAddresseId() + ") " +
+                            "where geometry transformation failed: " + address.getKoordinatsystemKode());
         }
 
         return null;
     }
 
     private static void setParent(PeliasDocument document, KartverketAddress address) {
-        document.getParents().addOrReplaceParent(ParentType.LOCALITY, "KVE:TopographicPlace:" + address.getKommunenr(), capitalize(address.getKommunenavn()));
-        document.getParents().addOrReplaceParent(ParentType.POSTAL_CODE, address.getPostnrn(), capitalize(address.getPostnummeromrade()));
-        document.getParents().addOrReplaceParent(ParentType.BOROUGH, address.getGrunnkretsnr(), capitalize(address.getGrunnkretsnavn()));
+        document.getParents().addOrReplaceParent(
+                ParentType.LOCALITY,
+                createPeliasIdForParent(address.getKommunenr()),
+                capitalize(address.getKommunenavn()));
+
+        document.getParents().addOrReplaceParent(
+                ParentType.POSTAL_CODE,
+                createPeliasIdForParent(address.getPostnrn()),
+                capitalize(address.getPostnummeromrade()));
+
+        document.getParents().addOrReplaceParent(
+                ParentType.BOROUGH,
+                createPeliasIdForParent(address.getGrunnkretsnr()),
+                capitalize(address.getGrunnkretsnavn()));
+    }
+
+    private static PeliasId createPeliasIdForParent(String id) {
+        return new PeliasId("KVE", "TopographicPlace", id);
     }
 
     private static String capitalize(String string) {

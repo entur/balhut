@@ -1,24 +1,9 @@
-/*
- * Licensed under the EUPL, Version 1.2 or – as soon they will be approved by
- * the European Commission - subsequent versions of the EUPL (the "Licence");
- * You may not use this work except in compliance with the Licence.
- * You may obtain a copy of the Licence at:
- *
- *   https://joinup.ec.europa.eu/software/page/eupl
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the Licence is distributed on an "AS IS" basis,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the Licence for the specific language governing permissions and
- * limitations under the Licence.
- *
- */
-
 package org.entur.balhut.addresses;
 
 import org.entur.geocoder.model.AddressParts;
 import org.entur.geocoder.model.ParentType;
 import org.entur.geocoder.model.PeliasDocument;
+import org.entur.geocoder.model.PeliasId;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
@@ -38,24 +23,24 @@ import java.util.stream.Stream;
  * NB! Streets are stored in the "address" layer in pelias, as this is prioritized
  */
 @Service
-public class StreetMapper {
+public class PeliasDocumentStreetMapper {
 
-    private static final String DEFAULT_SOURCE = "kartverket";
-    private static final String STREET_LAYER = "street";
+    private static final String DEFAULT_SOURCE = "KVE";
+    private static final String STREET_LAYER = "Street";
 
     private final long popularity;
 
-    public StreetMapper(@Value("${pelias.address.street.boost:2}") long popularity) {
+    public PeliasDocumentStreetMapper(@Value("${pelias.address.street.boost:2}") long popularity) {
         this.popularity = popularity;
     }
 
     public Stream<PeliasDocument> createStreetPeliasDocumentsFromAddresses(List<PeliasDocument> peliasDocuments) {
         Collection<ArrayList<PeliasDocument>> addressesPerStreet = peliasDocuments.stream()
-                .filter(StreetMapper::hasValidAddress)
+                .filter(PeliasDocumentStreetMapper::hasValidAddress)
                 .collect(Collectors.groupingBy(
-                                UniqueStreetKey::new,
-                                Collectors.mapping(Function.identity(), Collectors.toCollection(ArrayList::new)))
-                        ).values();
+                        UniqueStreetKey::new,
+                        Collectors.mapping(Function.identity(), Collectors.toCollection(ArrayList::new)))
+                ).values();
 
         return addressesPerStreet.stream().map(this::createPeliasStreetDocFromAddresses);
     }
@@ -69,7 +54,7 @@ public class StreetMapper {
 
         String streetName = templateAddress.getAddressParts().street();
         String uniqueId = templateAddress.getParents().idFor(ParentType.LOCALITY) + "-" + streetName;
-        PeliasDocument streetDocument = new PeliasDocument(STREET_LAYER, DEFAULT_SOURCE, uniqueId);
+        PeliasDocument streetDocument = new PeliasDocument(new PeliasId(DEFAULT_SOURCE, STREET_LAYER, uniqueId));
 
         streetDocument.setDefaultName(streetName);
 
@@ -93,7 +78,7 @@ public class StreetMapper {
         return addressesOnStreet.get(addressesOnStreet.size() / 2);
     }
 
-    public record UniqueStreetKey(String streetName, String localityId) {
+    public record UniqueStreetKey(String streetName, PeliasId localityId) {
 
         public UniqueStreetKey(PeliasDocument peliasDocument) {
             this(peliasDocument.getAddressParts().street(),

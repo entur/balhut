@@ -1,7 +1,7 @@
 package org.entur.balhut;
 
-import org.entur.balhut.addresses.PeliasDocumentMapper;
-import org.entur.balhut.addresses.StreetMapper;
+import org.entur.balhut.addresses.PeliasDocumentAddressMapper;
+import org.entur.balhut.addresses.PeliasDocumentStreetMapper;
 import org.entur.balhut.addresses.kartverket.KartverketAddress;
 import org.entur.balhut.addresses.kartverket.KartverketAddressReader;
 import org.entur.balhut.blobStore.BalhutBlobStoreService;
@@ -37,17 +37,17 @@ public class BalhutService {
 
     private final KakkaBlobStoreService kakkaBlobStoreService;
     private final BalhutBlobStoreService balhutBlobStoreService;
-    private final PeliasDocumentMapper addressMapper;
-    private final StreetMapper streetMapper;
+    private final PeliasDocumentAddressMapper peliasDocumentAddressMapper;
+    private final PeliasDocumentStreetMapper peliasDocumentStreetMapper;
 
     public BalhutService(KakkaBlobStoreService kakkaBlobStoreService,
                          BalhutBlobStoreService balhutBlobStoreService,
-                         PeliasDocumentMapper addressMapper,
-                         StreetMapper streetMapper) {
+                         PeliasDocumentAddressMapper peliasDocumentAddressMapper,
+                         PeliasDocumentStreetMapper peliasDocumentStreetMapper) {
         this.kakkaBlobStoreService = kakkaBlobStoreService;
         this.balhutBlobStoreService = balhutBlobStoreService;
-        this.addressMapper = addressMapper;
-        this.streetMapper = streetMapper;
+        this.peliasDocumentAddressMapper = peliasDocumentAddressMapper;
+        this.peliasDocumentStreetMapper = peliasDocumentStreetMapper;
     }
 
     @Retryable(
@@ -85,7 +85,7 @@ public class BalhutService {
         // Create documents for all individual addresses
         return kartverketAddresses
                 .parallel()
-                .map(addressMapper::toPeliasDocument)
+                .map(peliasDocumentAddressMapper::toPeliasDocument)
                 .toList();
     }
 
@@ -95,7 +95,7 @@ public class BalhutService {
         // Create separate document per unique street
         return Stream.concat(
                 individualAddressDocuments.stream(),
-                streetMapper.createStreetPeliasDocumentsFromAddresses(individualAddressDocuments));
+                peliasDocumentStreetMapper.createStreetPeliasDocumentsFromAddresses(individualAddressDocuments));
     }
 
     protected InputStream createCSVFile(Stream<PeliasDocument> peliasDocuments) {

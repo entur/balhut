@@ -17,7 +17,7 @@
         <java.version>17</java.version>
         <geotools.version>26.4</geotools.version>
         <logstash-logback-encoder.version>7.2</logstash-logback-encoder.version>
-        <geocoder-utilities.version>1.1-SNAPSHOT</geocoder-utilities.version>
+        <geocoder-utilities.version>1.2-20250130.111143-1</geocoder-utilities.version>
     </properties>
     <dependencies>
         <!-- Spring boot -->

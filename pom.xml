@@ -18,6 +18,9 @@
         <geotools.version>26.4</geotools.version>
         <logstash-logback-encoder.version>7.2</logstash-logback-encoder.version>
         <geocoder-utilities.version>1.2-20250130.111143-1</geocoder-utilities.version>
+        <prettier-java.version>2.1.0</prettier-java.version>
+        <prettier-maven-plugin.version>0.21</prettier-maven-plugin.version>
+        <plugin.prettier.goal>write</plugin.prettier.goal>
     </properties>
     <dependencies>
         <!-- Spring boot -->
@@ -97,6 +100,46 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>com.hubspot.maven.plugins</groupId>
+                <artifactId>prettier-maven-plugin</artifactId>
+                <version>${prettier-maven-plugin.version}</version>
+                <configuration>
+                    <prettierJavaVersion>${prettier-java.version}</prettierJavaVersion>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>${plugin.prettier.goal}</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.hubspot.maven.plugins</groupId>
+                        <artifactId>prettier-maven-plugin</artifactId>
+                        <version>${prettier-maven-plugin.version}</version>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>prettierCheck</id>
+            <properties>
+                <!-- In the CI environment we want to validate that code is formatted -->
+                <plugin.prettier.goal>check</plugin.prettier.goal>
+            </properties>
+        </profile>
+    </profiles>
 </project>

@@ -9,22 +9,29 @@ import org.springframework.stereotype.Service;
 @Service
 public class BalhutBlobStoreService extends BlobStoreService {
 
-    @Value("${blobstore.gcs.haya.bucket.name:haya-dev}")
-    private String targetBucketName;
+  @Value("${blobstore.gcs.haya.bucket.name:haya-dev}")
+  private String targetBucketName;
 
-    @Value("${blobstore.gcs.haya.latest.filename_without_extension:balhut_latest}")
-    private String targetFilename;
+  @Value(
+    "${blobstore.gcs.haya.latest.filename_without_extension:balhut_latest}"
+  )
+  private String targetFilename;
 
-    @Value("${blobstore.gcs.haya.import.folder:import}")
-    private String targetFolder;
+  @Value("${blobstore.gcs.haya.import.folder:import}")
+  private String targetFolder;
 
-    public BalhutBlobStoreService(
-            @Value("${blobstore.gcs.balhut.bucket.name:balhut-dev}") String bucketName,
-            @Autowired BlobStoreRepository repository) {
-        super(bucketName, repository);
-    }
+  public BalhutBlobStoreService(
+    @Value("${blobstore.gcs.balhut.bucket.name:balhut-dev}") String bucketName,
+    @Autowired BlobStoreRepository repository
+  ) {
+    super(bucketName, repository);
+  }
 
-    public void copyBlobAsLatestToTargetBucket(String sourceName) {
-        super.copyBlob(sourceName, targetBucketName, targetFolder + "/" + targetFilename + ".zip");
-    }
+  public void copyBlobAsLatestToTargetBucket(String sourceName) {
+    super.copyBlob(
+      sourceName,
+      targetBucketName,
+      targetFolder + "/" + targetFilename + ".zip"
+    );
+  }
 }

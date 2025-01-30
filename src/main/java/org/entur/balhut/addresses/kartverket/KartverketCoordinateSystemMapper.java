@@ -35,8 +35,9 @@ import java.util.Map;
  */
 public class KartverketCoordinateSystemMapper {
 
-    private static final Map<String, String> COORDINATE_SYSTEM_MAPPING = new HashMap<>() {{
-
+  private static final Map<String, String> COORDINATE_SYSTEM_MAPPING =
+    new HashMap<>() {
+      {
         // TODO: Trenger vi de gamle koder?
         put("21", "31");
         put("22", "32");
@@ -54,9 +55,10 @@ public class KartverketCoordinateSystemMapper {
         put("25834", "34");
         put("25835", "35");
         put("25836", "36");
-    }};
+      }
+    };
 
-    public static String toUTMZone(String kartverketCoordinateSystemCode) {
-        return COORDINATE_SYSTEM_MAPPING.get(kartverketCoordinateSystemCode);
-    }
+  public static String toUTMZone(String kartverketCoordinateSystemCode) {
+    return COORDINATE_SYSTEM_MAPPING.get(kartverketCoordinateSystemCode);
+  }
 }
